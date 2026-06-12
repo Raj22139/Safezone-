@@ -1,0 +1,54 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}{% if edit %}Edit Area{% else %}Add Area{% endif %}{% endblock %}
+{% block anav_areas %}active{% endblock %}
+{% block admin_content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="a-card">
+      <div class="a-card-head">
+        <div>
+          <h6>{% if edit %}Edit Area{% else %}Add New Area{% endif %}</h6>
+          <small style="color:#6B7299;">{% if edit %}Update area details{% else %}Register a new area in the system{% endif %}</small>
+        </div>
+        <a href="{% url 'admin_panel:area_list' %}" class="btn btn-sm" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);"><i class="bi bi-arrow-left me-1"></i>Back</a>
+      </div>
+      <form method="post" class="p-4">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Area Name *</label>
+            <input type="text" name="name" class="form-control" value="{{ area.name|default:'' }}" placeholder="e.g. Connaught Place" required/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">City *</label>
+            <input type="text" name="city" class="form-control" value="{{ area.city|default:'' }}" placeholder="e.g. New Delhi" required/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">State</label>
+            <input type="text" name="state" class="form-control" value="{{ area.state|default:'' }}" placeholder="e.g. Delhi"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Pincode</label>
+            <input type="text" name="pincode" class="form-control" value="{{ area.pincode|default:'' }}" placeholder="e.g. 110001"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Risk Score (0–100) *</label>
+            <input type="number" name="risk_score" class="form-control" min="0" max="100" value="{{ area.risk_score|default:'0' }}" required/>
+            <div class="form-text" style="color:#3E4463;">0–35 = Low &nbsp;|&nbsp; 36–65 = Medium &nbsp;|&nbsp; 66–100 = High</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Description</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Brief description of this area...">{{ area.description|default:'' }}</textarea>
+          </div>
+          <div class="col-12 d-flex gap-2 pt-2">
+            <button type="submit" class="btn fw-semibold px-4" style="background:var(--accent);color:#fff;border:none;">
+              <i class="bi bi-check-lg me-2"></i>{% if edit %}Update Area{% else %}Save Area{% endif %}
+            </button>
+            <a href="{% url 'admin_panel:area_list' %}" class="btn" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,340 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Live Location Safety{% endblock %}
+{% block nav_live %}active{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  #liveMap { height: 400px; border-radius: 14px; border: 1.5px solid var(--border); overflow: hidden; }
+  .pulse-ring {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #1A56FF; border: 3px solid #fff;
+    box-shadow: 0 0 0 0 rgba(26,86,255,.5);
+    animation: liveRing 2s infinite;
+  }
+  @keyframes liveRing {
+    0%   { box-shadow: 0 0 0 0 rgba(26,86,255,.5); }
+    70%  { box-shadow: 0 0 0 14px rgba(26,86,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(26,86,255,0); }
+  }
+  .detect-btn {
+    background: linear-gradient(135deg, var(--primary), #0f45e8);
+    color: #fff; border: none; border-radius: 12px;
+    padding: 14px 24px; font-weight: 600; font-family: 'DM Sans',sans-serif;
+    cursor: pointer; transition: all .25s; width: 100%; font-size: .95rem;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .detect-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,86,255,.35); }
+  .detect-btn:disabled { opacity: .7; transform: none; cursor: not-allowed; }
+  .result-card { border-radius: 14px; padding: 20px; border: 1.5px solid var(--border); background: var(--surface); animation: fadeUp .4s ease both; }
+  .score-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0; border: 4px solid;
+  }
+  .safer-chip { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; transition: var(--transition); cursor:pointer; }
+  .safer-chip:hover { border-color: var(--safe); transform: translateY(-2px); }
+  .error-box { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); border-radius: 12px; padding: 14px 18px; font-size: .85rem; color: var(--danger); display: none; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+
+  <!-- Left Panel -->
+  <div class="col-lg-5">
+
+    <!-- Detect Card -->
+    <div class="panel p-4 mb-3">
+      <div class="text-center mb-4">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(26,86,255,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+          <i class="bi bi-crosshair2" style="color:var(--primary);font-size:1.6rem;"></i>
+        </div>
+        <h5 class="fw-bold mb-1">Live Location Safety</h5>
+        <p class="text-muted small mb-0">Allow location access to instantly check safety around you</p>
+      </div>
+
+      <button class="detect-btn mb-3" onclick="detectLocation()" id="detectBtn">
+        <span id="detectSpinner" class="spinner-border spinner-border-sm d-none" style="color:#fff;width:16px;height:16px;"></span>
+        <i class="bi bi-geo-alt-fill" id="detectIcon"></i>
+        <span id="detectText">Detect My Location</span>
+      </button>
+
+      <div class="error-box" id="errorBox">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span id="errorMsg">Error</span>
+      </div>
+
+      <div class="text-center mt-3">
+        <small class="text-muted"><i class="bi bi-shield-lock me-1"></i>Your location is never stored on our servers</small>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="resultSection" style="display:none;">
+      <div class="result-card mb-3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="score-ring" id="scoreRing">
+            <span id="scoreNum" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;"></span>
+            <span style="font-size:.58rem;color:#6B7594;">/100</span>
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-bold mb-1" id="resultAreaName" style="font-size:.95rem;"></div>
+            <div id="matchedArea" class="text-muted mb-2" style="font-size:.75rem;"></div>
+            <span id="resultPill" class="badge rounded-pill px-3 py-1 mb-2"></span>
+            <p class="text-muted mb-0 mt-2" id="resultDesc" style="font-size:.82rem;line-height:1.55;"></p>
+          </div>
+        </div>
+
+        <!-- High risk warning -->
+        <div id="highRiskAlert" class="mt-3 p-3 rounded-3" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);display:none;">
+          <div class="fw-semibold small mb-1" style="color:var(--danger);">⚠️ High Risk Zone Detected!</div>
+          <div class="text-muted" style="font-size:.78rem;">Consider moving to a safer area. Check emergency options below.</div>
+        </div>
+      </div>
+
+      <!-- Safer Areas -->
+      <div id="saferSection" style="display:none;" class="mb-3">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-shield-check-fill" style="color:var(--safe);"></i>
+          <span class="fw-semibold small" style="color:var(--safe);">Safer Nearby Areas</span>
+        </div>
+        <div id="saferList" class="d-flex flex-column gap-2"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:sos' %}" class="btn-primary-custom py-2 flex-grow-1 justify-content-center text-decoration-none" style="border-radius:10px;background:var(--danger);">
+          <i class="bi bi-exclamation-octagon-fill"></i> SOS
+        </a>
+        <button onclick="detectLocation()" class="btn-outline-custom py-2 px-3" style="border-radius:10px;font-size:.82rem;">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right — Map -->
+  <div class="col-lg-7">
+    <div class="panel p-0" style="overflow:hidden;border-radius:14px;">
+      <div id="liveMap"></div>
+    </div>
+    <div class="text-muted small mt-2 text-center">
+      <i class="bi bi-info-circle me-1"></i>
+      Map shows your location and nearest SafeZone AI areas. Circles = risk zones.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map init ──
+const map = L.map('liveMap', { zoomControl: true }).setView([22.5, 78.9], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18,
+}).addTo(map);
+
+let userMarker = null;
+let areaMarkers = [];
+
+const COLORS = { low:'#00C48C', medium:'#F59E0B', high:'#EF4444' };
+const LABELS = { low:'✓ LOW RISK', medium:'⚡ MEDIUM RISK', high:'⚠ HIGH RISK' };
+const BCLS   = { low:'badge-low', medium:'badge-med', high:'badge-high' };
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  document.getElementById('errorMsg').textContent = msg;
+  box.style.display = 'block';
+  setTimeout(() => box.style.display = 'none', 6000);
+}
+
+function setDetectState(loading) {
+  const btn     = document.getElementById('detectBtn');
+  const spinner = document.getElementById('detectSpinner');
+  const icon    = document.getElementById('detectIcon');
+  const text    = document.getElementById('detectText');
+  btn.disabled  = loading;
+  spinner.classList.toggle('d-none', !loading);
+  icon.classList.toggle('d-none',    loading);
+  text.textContent = loading ? 'Detecting...' : 'Detect My Location';
+}
+
+function detectLocation() {
+  document.getElementById('errorBox').style.display = 'none';
+
+  if (!navigator.geolocation) {
+    showError('Geolocation is not supported by your browser.');
+    return;
+  }
+
+  setDetectState(true);
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      placeUserMarker(lat, lng, accuracy);
+      loadSafetyForCoords(lat, lng);
+    },
+    err => {
+      setDetectState(false);
+      const msgs = {
+        1: 'Location access denied. Please click the 🔒 icon in your browser address bar and allow location.',
+        2: 'Position unavailable. Make sure GPS is enabled on your device.',
+        3: 'Request timed out. Please try again.',
+      };
+      showError(msgs[err.code] || 'Could not get your location.');
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+    }
+  );
+}
+
+function placeUserMarker(lat, lng, accuracy) {
+  if (userMarker) map.removeLayer(userMarker);
+
+  const youIcon = L.divIcon({
+    html: `<div class="pulse-ring"></div>`,
+    className: '',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+
+  userMarker = L.marker([lat, lng], { icon: youIcon, zIndexOffset: 1000 })
+    .addTo(map)
+    .bindPopup(`
+      <div style="font-family:'DM Sans',sans-serif;padding:4px;">
+        <b style="color:#1A56FF;">📍 Your Location</b><br>
+        <span style="font-size:.72rem;color:#6B7594;">
+          ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E<br>
+          Accuracy: ±${Math.round(accuracy || 0)}m
+        </span>
+      </div>`)
+    .openPopup();
+
+  // Accuracy circle
+  if (accuracy && accuracy < 5000) {
+    L.circle([lat, lng], {
+      radius: accuracy,
+      color: '#1A56FF', fillColor: '#1A56FF',
+      fillOpacity: 0.06, weight: 1, dashArray: '4 4',
+    }).addTo(map);
+  }
+
+  map.setView([lat, lng], 13);
+}
+
+function loadSafetyForCoords(lat, lng) {
+  fetch(`{% url 'dashboard:live_safety_check' %}?lat=${lat}&lng=${lng}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(r => {
+    if (!r.ok) throw new Error(`Server error ${r.status}`);
+    return r.json();
+  })
+  .then(data => {
+    setDetectState(false);
+    renderResult(data);
+    loadNearbyAreasOnMap(lat, lng);
+  })
+  .catch(err => {
+    setDetectState(false);
+    showError('Failed to get safety data. Please try again.');
+    console.error(err);
+  });
+}
+
+function renderResult(data) {
+  const c = COLORS[data.level] || '#6B7594';
+
+  // Score ring
+  const ring = document.getElementById('scoreRing');
+  ring.style.borderColor = c;
+  ring.style.background  = c + '15';
+  document.getElementById('scoreNum').style.color  = c;
+  document.getElementById('scoreNum').textContent  = data.score;
+
+  // Text
+  document.getElementById('resultAreaName').textContent = data.area_name || 'Unknown Location';
+
+  const matched = document.getElementById('matchedArea');
+  if (data.matched_area && data.matched_area !== data.area_name) {
+    matched.textContent = `Nearest area: ${data.matched_area}${data.distance_km ? ` (${data.distance_km} km away)` : ''}`;
+    matched.style.display = 'block';
+  } else {
+    matched.style.display = 'none';
+  }
+
+  document.getElementById('resultDesc').textContent = data.description;
+
+  const pill = document.getElementById('resultPill');
+  pill.textContent  = (data.estimated ? '🤖 AI Estimated · ' : '') + LABELS[data.level];
+  pill.className    = `badge rounded-pill px-3 py-1 mb-2 ${BCLS[data.level]}`;
+
+  // High risk alert
+  document.getElementById('highRiskAlert').style.display = data.level === 'high' ? 'block' : 'none';
+
+  // Safer areas
+  const safer = data.safer_areas;
+  if (safer && safer.length > 0 && data.level !== 'low') {
+    document.getElementById('saferSection').style.display = 'block';
+    document.getElementById('saferList').innerHTML = safer.map(a => `
+      <div class="safer-chip d-flex align-items-center justify-content-between gap-2">
+        <div>
+          <div class="fw-semibold small">📍 ${a.name}</div>
+          <div class="text-muted" style="font-size:.72rem;">${a.city || ''}</div>
+        </div>
+        <div class="text-end">
+          <div class="fw-bold small" style="color:var(--safe);">${a.score}</div>
+          <div style="font-size:.65rem;color:var(--muted);">LOW</div>
+        </div>
+      </div>`).join('');
+  } else {
+    document.getElementById('saferSection').style.display = 'none';
+  }
+
+  document.getElementById('resultSection').style.display = 'block';
+}
+
+function loadNearbyAreasOnMap(userLat, userLng) {
+  // Remove old area markers
+  areaMarkers.forEach(m => map.removeLayer(m));
+  areaMarkers = [];
+
+  fetch(`{% url 'dashboard:heatmap_data' %}`)
+    .then(r => r.json())
+    .then(data => {
+      data.areas.forEach(a => {
+        const color  = COLORS[a.level] || '#6B7594';
+        const circle = L.circleMarker([a.lat, a.lng], {
+          radius:      8 + Math.round(a.score / 10),
+          fillColor:   color,
+          color:       '#fff',
+          weight:      2,
+          opacity:     1,
+          fillOpacity: 0.65,
+        });
+        circle.bindPopup(`
+          <div style="font-family:'DM Sans',sans-serif;padding:4px;min-width:140px;">
+            <div style="font-weight:700;font-size:.88rem;color:#0D1321;">${a.name}</div>
+            <div style="font-size:.72rem;color:#6B7594;margin-bottom:6px;">${a.city}</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:${color};">${a.score}<span style="font-size:.65rem;color:#9BA3BC;">/100</span></div>
+            <a href="/dashboard/area/${a.id}/" style="font-size:.72rem;color:#1A56FF;">View →</a>
+          </div>`);
+        circle.addTo(map);
+        areaMarkers.push(circle);
+      });
+    })
+    .catch(() => {});
+}
+
+// Load area markers on initial load
+loadNearbyAreasOnMap(22.5, 78.9);
+</script>
+{% endblock %}

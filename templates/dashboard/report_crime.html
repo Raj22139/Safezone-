@@ -1,0 +1,60 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Report a Crime{% endblock %}
+
+{% block dashboard_content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card p-4">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="icon-box" style="background:rgba(239,68,68,.08);"><i class="bi bi-exclamation-triangle text-danger fs-5"></i></div>
+        <div><h6 class="fw-bold mb-0">Report a Crime Incident</h6><small class="text-muted">Your report helps keep the community safe</small></div>
+      </div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted">Location / Area *</label>
+            <input type="text" name="location_text" class="form-control" placeholder="e.g. Near Metro Gate 3, Connaught Place" required/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Nearest Area (optional)</label>
+            <select name="area_id" class="form-select">
+              <option value="">Select area...</option>
+              {% for area in areas %}<option value="{{ area.id }}">{{ area.name }}, {{ area.city }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Crime Type *</label>
+            <select name="crime_type" class="form-select" required>
+              <option value="">Select type...</option>
+              {% for val, label in crime_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Incident Date *</label>
+            <input type="date" name="incident_date" class="form-control" required/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Severity (1–10)</label>
+            <input type="range" name="severity" class="form-range mt-2" min="1" max="10" value="5" oninput="document.getElementById('sevVal').textContent=this.value"/>
+            <small class="text-muted">Severity: <b id="sevVal">5</b>/10</small>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted">Description *</label>
+            <textarea name="description" class="form-control" rows="4" placeholder="Describe what happened in detail..." required minlength="20"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted">Photo (optional)</label>
+            <input type="file" name="photo" class="form-control" accept="image/*"/>
+            <div class="form-text">Upload a photo of the incident location (optional)</div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-danger px-4 fw-semibold"><i class="bi bi-send me-2"></i>Submit Report</button>
+            <a href="{% url 'dashboard:crime_feed' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

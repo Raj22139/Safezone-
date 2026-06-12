@@ -1,0 +1,35 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Import Crime Data{% endblock %}
+{% block admin_content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="a-card">
+      <div class="a-card-head">
+        <div><h6>Bulk Import Crime Records</h6><small style="color:#6B7299;">Upload CSV or Excel file</small></div>
+        <a href="{% url 'admin_panel:crime_list' %}" class="btn btn-sm" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);"><i class="bi bi-arrow-left me-1"></i>Back</a>
+      </div>
+      <div class="p-4">
+        <div class="p-3 rounded-3 mb-4" style="background:rgba(79,110,255,.06);border:1px solid rgba(79,110,255,.2);">
+          <h6 style="color:var(--accent);font-size:.85rem;" class="fw-bold mb-2">📋 Required CSV/Excel Columns:</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <code style="background:var(--ab2);color:#E8EAF2;padding:3px 8px;border-radius:5px;font-size:.78rem;">{{ col }}</code>
+          </div>
+          <div class="mt-2" style="font-size:.78rem;color:#6B7299;">
+            
+          </div>
+        </div>
+        <form method="post" enctype="multipart/form-data" action="{% url 'dashboard:import_crimes' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Upload File</label>
+            <input type="file" name="file" class="form-control" accept=".csv,.xlsx,.xls" required/>
+          </div>
+          <button type="submit" class="btn fw-semibold px-4" style="background:var(--accent);color:#fff;border:none;">
+            <i class="bi bi-upload me-2"></i>Import Records
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

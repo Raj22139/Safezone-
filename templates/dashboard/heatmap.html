@@ -1,0 +1,262 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Crime Heatmap{% endblock %}
+{% block nav_heatmap %}active{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  #map { height: 520px; border-radius: 14px; border: 1.5px solid var(--border); overflow: hidden; }
+  .map-controls { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+  .risk-popup-inner { font-family: 'DM Sans', sans-serif; min-width: 160px; }
+  .risk-popup-inner .area-score { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; }
+  .leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 8px 24px rgba(0,0,0,.12) !important; border: none !important; }
+  .leaflet-popup-tip { display: none; }
+  .map-stat { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 20px; text-align: center; }
+  .map-stat-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; line-height: 1; }
+  .loading-overlay { position:absolute; inset:0; background:rgba(240,242,248,.8); display:flex; align-items:center; justify-content:center; border-radius:14px; z-index:1000; }
+  .legend-box { position: absolute; bottom: 24px; right: 12px; z-index: 999; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: .78rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<!-- Controls -->
+<div class="map-controls d-flex align-items-center gap-3 flex-wrap">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-map-fill text-accent fs-5"></i>
+    <h6 class="fw-bold mb-0">Crime Risk Heatmap</h6>
+  </div>
+  <select id="cityFilter" class="form-select" style="width:180px;" onchange="loadMap()">
+    <option value="">🌍 All Cities</option>
+    {% for city in cities %}<option value="{{ city }}">{{ city }}</option>{% endfor %}
+  </select>
+  <select id="levelFilter" class="form-select" style="width:150px;" onchange="loadMap()">
+    <option value="">All Levels</option>
+    <option value="low">🟢 Low Risk</option>
+    <option value="medium">🟡 Medium Risk</option>
+    <option value="high">🔴 High Risk</option>
+  </select>
+  <button class="btn-outline-custom py-2 px-3 d-flex align-items-center gap-2" style="border-radius:9px;font-size:.82rem;" onclick="locateMe()">
+    <i class="bi bi-crosshair2"></i> My Location
+  </button>
+  <button class="btn-outline-custom py-2 px-3 d-flex align-items-center gap-2" style="border-radius:9px;font-size:.82rem;" onclick="loadMap()">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+  </button>
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    <span style="background:rgba(0,196,140,.12);color:var(--safe);padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;">🟢 Low Risk</span>
+    <span style="background:rgba(245,158,11,.12);color:var(--warn);padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;">🟡 Medium</span>
+    <span style="background:rgba(239,68,68,.12);color:var(--danger);padding:5px 12px;border-radius:8px;font-size:.78rem;font-weight:600;">🔴 High Risk</span>
+  </div>
+</div>
+
+<!-- Map -->
+<div class="panel p-0 mb-4" style="position:relative;">
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="text-center">
+      <div class="spinner-border text-accent mb-2"></div>
+      <div class="text-muted small">Loading crime data...</div>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div class="legend-box" id="mapLegend">
+    <div class="fw-semibold small mb-2">Risk Level</div>
+    <div class="mb-1"><span class="legend-dot" style="background:#00C48C;"></span>Low (0–35)</div>
+    <div class="mb-1"><span class="legend-dot" style="background:#F59E0B;"></span>Medium (36–65)</div>
+    <div><span class="legend-dot" style="background:#EF4444;"></span>High (66–100)</div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3">
+  <div class="col-6 col-md-3">
+    <div class="map-stat">
+      <div class="map-stat-num" id="totalAreas" style="color:var(--primary);">—</div>
+      <div class="text-muted small mt-1">Areas Mapped</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-stat">
+      <div class="map-stat-num" id="highRiskCount" style="color:var(--danger);">—</div>
+      <div class="text-muted small mt-1">High Risk</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-stat">
+      <div class="map-stat-num" id="lowRiskCount" style="color:var(--safe);">—</div>
+      <div class="text-muted small mt-1">Low Risk</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="map-stat">
+      <div class="map-stat-num" id="avgScore" style="color:var(--warn);">—</div>
+      <div class="text-muted small mt-1">Avg Risk Score</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Initialise Leaflet Map ──
+const map = L.map('map', {
+  zoomControl: true,
+  attributionControl: true,
+}).setView([22.5, 78.9], 5);
+
+// OpenStreetMap tile layer (free, no API key needed)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18,
+  minZoom: 3,
+}).addTo(map);
+
+let markers     = [];
+let userMarker  = null;
+
+function getColor(level) {
+  return level === 'low' ? '#00C48C' : level === 'medium' ? '#F59E0B' : '#EF4444';
+}
+function getRadius(score) {
+  return 8 + Math.round(score / 8);  // 8–20px radius
+}
+
+function loadMap() {
+  const city  = document.getElementById('cityFilter').value;
+  const level = document.getElementById('levelFilter').value;
+
+  // Show loading
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  // Remove old markers
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+
+  const url = `{% url 'dashboard:heatmap_data' %}?city=${encodeURIComponent(city)}&level=${encodeURIComponent(level)}`;
+
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('Network error');
+      return r.json();
+    })
+    .then(data => {
+      document.getElementById('loadingOverlay').style.display = 'none';
+
+      if (!data.areas || data.areas.length === 0) {
+        document.getElementById('totalAreas').textContent = '0';
+        document.getElementById('highRiskCount').textContent = '0';
+        document.getElementById('lowRiskCount').textContent  = '0';
+        document.getElementById('avgScore').textContent      = '—';
+        return;
+      }
+
+      let high = 0, low = 0, scoreSum = 0;
+
+      data.areas.forEach(a => {
+        scoreSum += a.score;
+        if (a.level === 'high') high++;
+        if (a.level === 'low')  low++;
+
+        const color  = getColor(a.level);
+        const radius = getRadius(a.score);
+
+        const circle = L.circleMarker([a.lat, a.lng], {
+          radius:      radius,
+          fillColor:   color,
+          color:       '#fff',
+          weight:      2,
+          opacity:     1,
+          fillOpacity: 0.75,
+        });
+
+        const trendIcon = a.trend === 'improving' ? '↓' : a.trend === 'worsening' ? '↑' : '→';
+        const trendClr  = a.trend === 'improving' ? '#00C48C' : a.trend === 'worsening' ? '#EF4444' : '#F59E0B';
+
+        circle.bindPopup(`
+          <div class="risk-popup-inner" style="padding:4px;">
+            <div style="font-weight:700;font-size:.92rem;margin-bottom:3px;color:#0D1321;">${a.name}</div>
+            <div style="font-size:.75rem;color:#6B7594;margin-bottom:8px;">${a.city}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span class="area-score" style="color:${color};">${a.score}</span>
+              <span style="font-size:.7rem;">/100</span>
+              <span style="font-size:.7rem;font-weight:700;background:${color}18;color:${color};padding:2px 8px;border-radius:6px;">${a.level.toUpperCase()}</span>
+            </div>
+            <div style="font-size:.72rem;color:${trendClr};font-weight:600;margin-bottom:8px;">${trendIcon} Trend: ${a.trend}</div>
+            <a href="/dashboard/area/${a.id}/" style="display:block;text-align:center;background:${color};color:#fff;padding:5px 12px;border-radius:7px;font-size:.78rem;font-weight:600;text-decoration:none;">
+              View Full Details →
+            </a>
+          </div>
+        `, { maxWidth: 220 });
+
+        circle.on('mouseover', function() { this.setStyle({ weight: 3, fillOpacity: 0.9 }); });
+        circle.on('mouseout',  function() { this.setStyle({ weight: 2, fillOpacity: 0.75 }); });
+
+        circle.addTo(map);
+        markers.push(circle);
+      });
+
+      // Update stats
+      const total = data.areas.length;
+      document.getElementById('totalAreas').textContent    = total;
+      document.getElementById('highRiskCount').textContent = high;
+      document.getElementById('lowRiskCount').textContent  = low;
+      document.getElementById('avgScore').textContent      = total ? Math.round(scoreSum / total) : '—';
+
+      // Zoom to fit if city filtered
+      if (city && markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.25));
+      }
+    })
+    .catch(err => {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      console.error('Heatmap error:', err);
+    });
+}
+
+// ── My Location button ──
+function locateMe() {
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      map.setView([lat, lng], 13);
+
+      if (userMarker) map.removeLayer(userMarker);
+
+      const youIcon = L.divIcon({
+        html: `<div style="
+          width:18px;height:18px;border-radius:50%;
+          background:#1A56FF;border:3px solid #fff;
+          box-shadow:0 0 0 4px rgba(26,86,255,.3);
+          animation:pulse 2s infinite;">
+        </div>`,
+        className: '',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+
+      userMarker = L.marker([lat, lng], { icon: youIcon })
+        .addTo(map)
+        .bindPopup('<b style="color:#1A56FF;">📍 You are here</b>')
+        .openPopup();
+    },
+    err => {
+      const msgs = {
+        1: 'Location access denied. Please allow location in browser settings.',
+        2: 'Location unavailable. Check your device GPS.',
+        3: 'Location request timed out. Try again.',
+      };
+      alert(msgs[err.code] || 'Could not get location.');
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+}
+
+// Load on page start
+loadMap();
+</script>
+{% endblock %}

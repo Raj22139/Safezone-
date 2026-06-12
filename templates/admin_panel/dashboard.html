@@ -1,0 +1,131 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Dashboard{% endblock %}
+{% block anav_dash %}active{% endblock %}
+
+{% block admin_content %}
+<!-- STATS -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="a-stat-card d-flex align-items-center gap-3">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(79,110,255,.12);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;"><i class="bi bi-people"></i></div>
+      <div><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.6rem;color:#E8EAF2;letter-spacing:-1px;">{{ total_users }}</div><div class="small" style="color:#6B7299;">Total Users</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="a-stat-card d-flex align-items-center gap-3">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,75,110,.1);display:flex;align-items:center;justify-content:center;color:var(--danger);flex-shrink:0;"><i class="bi bi-file-earmark-text"></i></div>
+      <div><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.6rem;color:#E8EAF2;letter-spacing:-1px;">{{ total_records }}</div><div class="small" style="color:#6B7299;">Crime Records</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="a-stat-card d-flex align-items-center gap-3">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(34,211,164,.1);display:flex;align-items:center;justify-content:center;color:var(--safe);flex-shrink:0;"><i class="bi bi-search"></i></div>
+      <div><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.6rem;color:#E8EAF2;letter-spacing:-1px;">{{ total_searches }}</div><div class="small" style="color:#6B7299;">Area Searches</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="a-stat-card d-flex align-items-center gap-3">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,166,35,.1);display:flex;align-items:center;justify-content:center;color:var(--warn);flex-shrink:0;"><i class="bi bi-clock-history"></i></div>
+      <div><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.6rem;color:#E8EAF2;letter-spacing:-1px;">{{ pending }}</div><div class="small" style="color:#6B7299;">Pending Reports</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Recent Crime Records -->
+  <div class="col-md-8">
+    <div class="a-card">
+      <div class="a-card-head">
+        <h6>Recent Crime Records</h6>
+        <a href="{% url 'admin_panel:crime_list' %}" class="small text-decoration-none" style="color:var(--accent);">View All →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table a-table mb-0">
+          <thead><tr><th>Area</th><th>Type</th><th>Risk</th><th>Score</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for r in recent_records %}
+            <tr>
+              <td><div class="fw-semibold">{{ r.area.name }}</div><div style="font-size:.74rem;color:#6B7299;">{{ r.area.city }}</div></td>
+              <td><small>{{ r.get_crime_type_display }}</small></td>
+              <td><span class="badge rounded-2 {% if r.area.risk_level == 'low' %}badge-low{% elif r.area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}">{{ r.area.risk_level|title }}</span></td>
+              <td><span class="fw-bold {% if r.area.risk_level == 'low' %}risk-low{% elif r.area.risk_level == 'medium' %}risk-med{% else %}risk-high{% endif %}" style="font-family:'Syne',sans-serif;">{{ r.area.risk_score }}</span></td>
+              <td style="font-size:.76rem;color:#6B7299;">{{ r.incident_date|date:"M d, Y" }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="{% url 'admin_panel:crime_edit' r.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(79,110,255,.1);color:var(--accent);border:1px solid rgba(79,110,255,.2);font-size:.72rem;"><i class="bi bi-pencil"></i></a>
+                  <a href="{% url 'admin_panel:crime_delete' r.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);font-size:.72rem;"><i class="bi bi-trash"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center py-4" style="color:#6B7299;">No records yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crime Breakdown -->
+  <div class="col-md-4">
+    <div class="a-card h-100">
+      <div class="a-card-head"><h6>Crime by Type</h6></div>
+      <div class="p-3">
+        {% for item in crime_breakdown %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small style="color:#9BA3BC;">{{ item.crime_type|title }}</small>
+            <small class="fw-bold" style="color:#E8EAF2;">{{ item.count }}</small>
+          </div>
+          <div style="height:5px;border-radius:5px;background:#21253A;overflow:hidden;">
+            <div style="height:100%;border-radius:5px;background:var(--accent);width:{{ item.count|default:0 }}%;max-width:100%;transition:width 1s;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- High Risk + Recent Users -->
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="a-card">
+      <div class="a-card-head"><h6>Top High-Risk Areas</h6><a href="{% url 'admin_panel:area_list' %}" class="small text-decoration-none" style="color:var(--accent);">Manage →</a></div>
+      <div class="p-0">
+        {% for area in high_risk_areas %}
+        <div class="d-flex align-items-center gap-3 px-4 py-2" style="border-bottom:1px solid var(--aborder);">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 6px var(--danger);flex-shrink:0;"></div>
+          <div class="flex-grow-1">
+            <div class="small fw-semibold" style="color:#E8EAF2;">{{ area.name }}</div>
+            <div style="font-size:.72rem;color:#6B7299;">{{ area.city }}</div>
+          </div>
+          <span class="fw-bold risk-high" style="font-family:'Syne',sans-serif;">{{ area.risk_score }}</span>
+        </div>
+        {% empty %}
+        <div class="p-3 text-center" style="color:#6B7299;">No high-risk areas.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="a-card">
+      <div class="a-card-head"><h6>Recent Users</h6><a href="{% url 'admin_panel:user_list' %}" class="small text-decoration-none" style="color:var(--accent);">All Users →</a></div>
+      <div class="p-0">
+        {% for u in recent_users %}
+        <div class="d-flex align-items-center gap-3 px-4 py-2" style="border-bottom:1px solid var(--aborder);">
+          <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#6C8FFF);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:#fff;flex-shrink:0;">
+            {{ u.first_name|first|upper }}{{ u.last_name|first|upper }}
+          </div>
+          <div class="flex-grow-1 overflow-hidden">
+            <div class="small fw-semibold text-truncate" style="color:#E8EAF2;">{{ u.get_full_name|default:u.username }}</div>
+            <div class="text-truncate" style="font-size:.72rem;color:#6B7299;">{{ u.email }}</div>
+          </div>
+          <span class="badge" style="background:rgba(34,211,164,.1);color:var(--safe);font-size:.65rem;">Active</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

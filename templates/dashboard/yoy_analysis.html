@@ -1,0 +1,76 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Year-over-Year Analysis{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <div class="icon-box" style="background:rgba(26,86,255,.08);"><i class="bi bi-calendar-range text-accent fs-5"></i></div>
+  <div><h5 class="fw-bold mb-0">Year-over-Year Analysis</h5><small class="text-muted">{{ result.previous_year }} vs {{ result.current_year }} crime comparison</small></div>
+  <form method="get" class="ms-auto d-flex gap-2 align-items-center">
+    <select name="area_id" class="form-select" style="width:220px;" onchange="this.form.submit()">
+      <option value="">All Areas</option>
+      {% for area in areas %}<option value="{{ area.id }}" {% if selected_area and selected_area.id == area.id %}selected{% endif %}>{{ area.name }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center"><div class="stat-val" style="color:var(--primary);">{{ result.current.total }}</div><div class="stat-lbl">{{ result.current_year }} Total Crimes</div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center"><div class="stat-val" style="color:var(--muted);">{{ result.previous.total }}</div><div class="stat-lbl">{{ result.previous_year }} Total Crimes</div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="stat-val" style="color:{% if result.total_change_pct > 0 %}var(--danger){% else %}var(--safe){% endif %};">
+        {% if result.total_change_pct > 0 %}+{% endif %}{{ result.total_change_pct }}%
+      </div>
+      <div class="stat-lbl">Total Change</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="stat-val" style="color:{% if result.trend == 'worsening' %}var(--danger){% elif result.trend == 'improving' %}var(--safe){% else %}var(--warn){% endif %};">
+        {% if result.trend == 'improving' %}↓{% elif result.trend == 'worsening' %}↑{% else %}→{% endif %} {{ result.trend|title }}
+      </div>
+      <div class="stat-lbl">Overall Trend</div>
+    </div>
+  </div>
+</div>
+
+<!-- Insight -->
+<div class="panel p-4 mb-4" style="border-color:rgba(26,86,255,.2);background:rgba(26,86,255,.03);">
+  <h6 class="fw-bold mb-2"><i class="bi bi-lightbulb-fill me-2" style="color:var(--primary);"></i>AI Insight</h6>
+  <p class="text-muted mb-0">{{ result.insight }}</p>
+</div>
+
+<!-- Type Changes Table -->
+<div class="panel">
+  <div class="panel-header"><span class="panel-title">Crime Type Comparison</span></div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead><tr><th>Crime Type</th><th>{{ result.previous_year }}</th><th>{{ result.current_year }}</th><th>Change</th><th>Trend</th></tr></thead>
+      <tbody>
+        {% for type, data in result.type_changes.items %}
+        <tr>
+          <td class="fw-semibold">{{ type|title }}</td>
+          <td class="text-muted">{{ data.previous }}</td>
+          <td class="fw-bold">{{ data.current }}</td>
+          <td>
+            <span class="fw-bold" style="color:{% if data.change_pct > 0 %}var(--danger){% elif data.change_pct < 0 %}var(--safe){% else %}var(--muted){% endif %};">
+              {% if data.change_pct > 0 %}+{% endif %}{{ data.change_pct }}%
+            </span>
+          </td>
+          <td>
+            {% if data.change_pct > 10 %}<span class="badge badge-high">Rising</span>
+            {% elif data.change_pct < -10 %}<span class="badge badge-low">Falling</span>
+            {% else %}<span class="badge badge-med">Stable</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

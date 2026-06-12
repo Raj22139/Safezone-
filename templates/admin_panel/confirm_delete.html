@@ -1,0 +1,22 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Confirm Delete{% endblock %}
+{% block admin_content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="a-card text-center p-4">
+      <div style="width:60px;height:60px;border-radius:14px;background:rgba(255,75,110,.1);border:1px solid rgba(255,75,110,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <i class="bi bi-trash fs-4" style="color:var(--danger);"></i>
+      </div>
+      <h5 class="fw-bold mb-2" style="color:#E8EAF2;">Delete {{ type }}?</h5>
+      <p class="mb-4" style="color:#6B7299;">Are you sure you want to delete <strong style="color:#E8EAF2;">{{ object }}</strong>? This action cannot be undone.</p>
+      <form method="post" class="d-flex gap-2 justify-content-center">
+        {% csrf_token %}
+        <button type="submit" class="btn fw-semibold px-4" style="background:var(--danger);color:#fff;border:none;">
+          <i class="bi bi-trash me-2"></i>Delete Permanently
+        </button>
+        <a href="javascript:history.back()" class="btn" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

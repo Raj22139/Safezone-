@@ -1,0 +1,54 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Anonymous Tips{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div><h6 class="fw-bold mb-0">🕵️ Anonymous Crime Tips</h6><small class="text-muted">Community-reported incidents</small></div>
+  <a href="{% url 'dashboard:anonymous_tip' %}" class="btn btn-accent btn-sm px-3"><i class="bi bi-plus me-1"></i>Submit Tip</a>
+</div>
+<div class="row g-3">
+  {% for tip in tips %}
+  <div class="col-12">
+    <div class="card p-4" id="tip-{{ tip.pk }}">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+            <span class="fw-bold small">📍 {{ tip.location_text }}</span>
+            <span class="badge bg-light text-muted" style="font-size:.65rem;">{{ tip.get_crime_type_display }}</span>
+            <span class="badge {% if tip.status == 'verified' %}badge-low{% else %}badge-med{% endif %}" style="font-size:.65rem;">{{ tip.status|title }}</span>
+          </div>
+          <p class="text-muted small mb-2">{{ tip.description }}</p>
+          <div class="d-flex align-items-center gap-3">
+            <small class="text-muted">{{ tip.incident_date|date:"M d, Y" }}</small>
+            <small style="color:var(--accent);font-weight:600;">Severity: {{ tip.severity }}/10</small>
+          </div>
+        </div>
+        <div class="text-center flex-shrink-0">
+          <button onclick="upvoteTip({{ tip.pk }})" class="btn btn-sm" style="background:rgba(26,86,255,.08);border:1px solid rgba(26,86,255,.2);color:var(--accent);">
+            <i class="bi bi-hand-thumbs-up"></i>
+            <span id="upvote-{{ tip.pk }}">{{ tip.upvotes }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-5 text-muted">
+    <i class="bi bi-chat-square-text fs-1 d-block mb-3"></i>
+    <h6>No Tips Yet</h6>
+    <p>Be the first to submit an anonymous safety tip.</p>
+    <a href="{% url 'dashboard:anonymous_tip' %}" class="btn btn-accent btn-sm px-4">Submit Tip</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function upvoteTip(pk){
+  fetch(`/dashboard/tips/upvote/${pk}/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+  .then(r=>r.json())
+  .then(d=>{document.getElementById(`upvote-${pk}`).textContent=d.upvotes;});
+}
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Saved Areas{% endblock %}
+{% block nav_saved %}active{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+  {% for s in saved_areas %}
+  <div class="col-md-4">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-start justify-content-between mb-2">
+        <div>
+          <h6 class="fw-bold mb-0">{{ s.area.name }}</h6>
+          <small class="text-muted">{{ s.area.city }}</small>
+        </div>
+        <span class="badge rounded-pill {% if s.area.risk_level == 'low' %}badge-low{% elif s.area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %} px-2">
+          {{ s.area.risk_level|title }}
+        </span>
+      </div>
+      <div class="d-flex align-items-center gap-2 mt-auto pt-2 border-top">
+        <span class="fw-bold fs-5 {% if s.area.risk_level == 'low' %}risk-low{% elif s.area.risk_level == 'medium' %}risk-med{% else %}risk-high{% endif %}" style="font-family:'Syne',sans-serif;">
+          {{ s.area.risk_score }}
+        </span>
+        <span class="text-muted small">/ 100 risk score</span>
+        <a href="{% url 'dashboard:unsave_area' s.area.id %}" class="btn btn-sm btn-outline-danger ms-auto py-1 px-2">
+          <i class="bi bi-bookmark-x"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center py-5 text-muted">
+    <i class="bi bi-bookmark fs-1 d-block mb-3"></i>
+    <h5>No Saved Areas</h5>
+    <p>Search an area and bookmark it to see it here.</p>
+    <a href="{% url 'dashboard:home' %}" class="btn btn-accent px-4">Search Now</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

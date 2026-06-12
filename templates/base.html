@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}SafeZone AI{% endblock %}</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- AOS Animations -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"/>
+  <!-- PWA -->
+  <link rel="manifest" href="/dashboard/manifest.json">
+  <meta name="theme-color" content="#1A56FF">
+
+  <style>
+    :root {
+      --primary:    #1A56FF;
+      --primary-dark: #0f45e8;
+      --primary-light: rgba(26,86,255,.08);
+      --safe:       #00C48C;
+      --warn:       #F59E0B;
+      --danger:     #EF4444;
+      --bg:         #F0F2F8;
+      --surface:    #FFFFFF;
+      --surface2:   #E8EBF4;
+      --border:     #DDE2EF;
+      --text:       #0D1321;
+      --muted:      #6B7594;
+      --radius:     14px;
+      --radius-lg:  20px;
+      --shadow-sm:  0 2px 8px rgba(13,19,33,.06);
+      --shadow:     0 4px 24px rgba(13,19,33,.09);
+      --shadow-lg:  0 12px 48px rgba(13,19,33,.14);
+      --transition: all .25s cubic-bezier(.4,0,.2,1);
+    }
+    [data-theme="dark"] {
+      --bg: #0C0E14; --surface: #13151E; --surface2: #1A1D2A;
+      --border: #252A3D; --text: #E8EAF2; --muted: #6B7299;
+      --primary: #4F6EFF;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background .3s, color .3s;
+      overflow-x: hidden;
+    }
+    h1,h2,h3,h4,h5,h6 { font-family: 'Syne', sans-serif; }
+
+    /* ── Utility Classes ── */
+    .text-primary-custom { color: var(--primary) !important; }
+    .bg-primary-custom   { background: var(--primary) !important; }
+    .text-safe   { color: var(--safe) !important; }
+    .text-warn   { color: var(--warn) !important; }
+    .text-danger-custom { color: var(--danger) !important; }
+
+    .card-custom {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      transition: var(--transition);
+    }
+    .card-custom:hover { box-shadow: var(--shadow); }
+
+    .badge-low    { background: rgba(0,196,140,.12);  color: var(--safe);  }
+    .badge-med    { background: rgba(245,158,11,.12); color: var(--warn);  }
+    .badge-high   { background: rgba(239,68,68,.12);  color: var(--danger);}
+
+    /* ── Buttons ── */
+    .btn-primary-custom {
+      background: var(--primary);
+      color: #fff; border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      transition: var(--transition);
+      display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn-primary-custom:hover {
+      background: var(--primary-dark);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(26,86,255,.35);
+    }
+    .btn-outline-custom {
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+    .btn-outline-custom:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp     { from { opacity:0; transform:translateY(24px);  } to { opacity:1; transform:none; } }
+    @keyframes fadeDown   { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:none; } }
+    @keyframes fadeIn     { from { opacity:0; }                              to { opacity:1; } }
+    @keyframes slideRight { from { opacity:0; transform:translateX(-20px); } to { opacity:1; transform:none; } }
+    @keyframes scaleIn    { from { opacity:0; transform:scale(.94); }       to { opacity:1; transform:none; } }
+    @keyframes pulse      { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+    @keyframes shimmer    {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-8px); }
+    }
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .animate-fade-up    { animation: fadeUp .6s ease both; }
+    .animate-fade-in    { animation: fadeIn .5s ease both; }
+    .animate-scale-in   { animation: scaleIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+    .animate-float      { animation: float 3s ease-in-out infinite; }
+
+    .delay-100 { animation-delay: .1s; }
+    .delay-200 { animation-delay: .2s; }
+    .delay-300 { animation-delay: .3s; }
+    .delay-400 { animation-delay: .4s; }
+    .delay-500 { animation-delay: .5s; }
+
+    /* ── Glassmorphism ── */
+    .glass {
+      background: rgba(255,255,255,.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.3);
+    }
+    [data-theme="dark"] .glass {
+      background: rgba(19,21,30,.7);
+      border-color: rgba(37,42,61,.5);
+    }
+
+    /* ── Loading Skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    /* ── Toast ── */
+    .toast-container { z-index: 9999; }
+    .toast-custom {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      animation: slideRight .3s ease both;
+      min-width: 280px;
+    }
+
+    /* ── Form Controls ── */
+    .form-control, .form-select {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      transition: var(--transition);
+      padding: 10px 14px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--surface);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,86,255,.1);
+      color: var(--text);
+    }
+    .form-control::placeholder { color: var(--muted); }
+    [data-theme="dark"] .form-control,
+    [data-theme="dark"] .form-select { background: var(--surface2); color: var(--text); }
+
+    /* ── Page loader ── */
+    #pageLoader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity .4s ease;
+    }
+    #pageLoader.hidden { opacity: 0; pointer-events: none; }
+    .loader-logo {
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .loader-shield {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      animation: scaleIn .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .loader-bar {
+      width: 160px; height: 3px;
+      background: var(--border);
+      border-radius: 3px; overflow: hidden;
+    }
+    .loader-bar-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--primary), #6C8FFF);
+      border-radius: 3px;
+      animation: loadBar 1.2s ease forwards;
+    }
+    @keyframes loadBar { from{width:0%} to{width:100%} }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Page Loader -->
+  <div id="pageLoader">
+    <div class="loader-logo">
+      <div class="loader-shield">
+        <i class="bi bi-shield-fill text-white fs-4"></i>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--text);">
+        SafeZone <span style="color:var(--primary);">AI</span>
+      </div>
+      <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+    </div>
+  </div>
+
+  {% block content %}{% endblock %}
+
+  <!-- Toast Messages -->
+  {% if messages %}
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    {% for msg in messages %}
+    <div class="toast-custom d-flex align-items-center gap-3 p-3 mb-2" role="alert" id="toast-{{ forloop.counter }}">
+      <div class="rounded-2 p-2 {% if msg.tags == 'success' %}text-success{% elif msg.tags == 'error' %}text-danger{% else %}text-primary{% endif %}"
+           style="background:{% if msg.tags == 'success' %}rgba(0,196,140,.1){% elif msg.tags == 'error' %}rgba(239,68,68,.1){% else %}rgba(26,86,255,.1){% endif %};">
+        <i class="bi bi-{% if msg.tags == 'success' %}check-circle-fill{% elif msg.tags == 'error' %}x-circle-fill{% else %}info-circle-fill{% endif %}"></i>
+      </div>
+      <div class="flex-grow-1" style="font-size:.85rem;">{{ msg }}</div>
+      <button onclick="this.closest('[id^=toast]').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;"><i class="bi bi-x"></i></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- AOS -->
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <script>
+    // Init AOS
+    AOS.init({ duration: 600, easing: 'ease-out-cubic', once: true, offset: 60 });
+
+    // Hide page loader
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loader = document.getElementById('pageLoader');
+        if (loader) { loader.classList.add('hidden'); setTimeout(() => loader.remove(), 400); }
+      }, 800);
+    });
+
+    // Animate counters
+    function animateCounter(el) {
+      const target = parseInt(el.dataset.target || el.textContent.replace(/\D/g,''));
+      const suffix = el.dataset.suffix || '';
+      const prefix = el.dataset.prefix || '';
+      let current = 0;
+      const step  = Math.ceil(target / 60);
+      const timer = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = prefix + current.toLocaleString() + suffix;
+        if (current >= target) clearInterval(timer);
+      }, 16);
+    }
+
+    // Intersection observer for counter animation
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { animateCounter(e.target); counterObserver.unobserve(e.target); } });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('[data-counter]').forEach(el => counterObserver.observe(el));
+
+    // Theme
+    const savedTheme = localStorage.getItem('sz-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('sz-theme', isDark ? 'light' : 'dark');
+      const icon = document.getElementById('themeIcon');
+      if (icon) icon.className = isDark ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+    }
+
+    // PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/dashboard/sw.js').catch(() => {});
+    }
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferredPrompt = e;
+      document.getElementById('pwaBtn')?.classList.remove('d-none');
+    });
+    function installPWA() {
+      deferredPrompt?.prompt();
+    }
+  </script>
+  {% block extra_js %}{% endblock %}
+
+  <!-- SafeZone Chatbot Widget -->
+  {% block chatbot %}{% include 'chatbot/widget.html' with chat_context="public" %}{% endblock %}
+</body>
+</html>

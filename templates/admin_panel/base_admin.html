@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block extra_css %}
+<style>
+  body { background:#0C0E14; color:#E8EAF2; }
+  :root { --ab:#13151E; --ab2:#1A1D2A; --aborder:#252A3D; --accent:#4F6EFF; --safe:#22D3A4; --warn:#F5A623; --danger:#FF4B6E; }
+  .admin-sidebar { width:248px; background:var(--ab); border-right:1px solid var(--aborder);
+    position:fixed; top:0; left:0; bottom:0; z-index:50; display:flex; flex-direction:column; overflow-y:auto; }
+  .admin-main { margin-left:248px; min-height:100vh; display:flex; flex-direction:column; }
+  .admin-topbar { height:60px; background:var(--ab); border-bottom:1px solid var(--aborder);
+    display:flex; align-items:center; justify-content:space-between; padding:0 24px;
+    position:sticky; top:0; z-index:40; }
+  .a-nav-link { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:9px;
+    color:#6B7299; font-size:.855rem; font-weight:500; text-decoration:none; transition:all .17s;
+    border:1px solid transparent; }
+  .a-nav-link:hover { background:var(--ab2); color:#E8EAF2; }
+  .a-nav-link.active { background:rgba(79,110,255,.12); color:var(--accent); border-color:rgba(79,110,255,.2); font-weight:600; }
+  .a-nav-section { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:1.8px;
+    color:#3E4463; padding:10px 12px 4px; }
+  .a-stat-card { background:var(--ab); border:1px solid var(--aborder); border-radius:14px; padding:20px;
+    transition:border-color .2s; }
+  .a-stat-card:hover { border-color:#2E3450; }
+  .a-table { border-color:var(--aborder); }
+  .a-table thead th { background:var(--ab2); color:#6B7299; border-color:var(--aborder); font-size:.7rem;
+    text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+  .a-table tbody tr { border-color:var(--aborder); transition:background .15s; }
+  .a-table tbody tr:hover { background:var(--ab2); }
+  .a-table td { border-color:var(--aborder); color:#E8EAF2; vertical-align:middle; font-size:.84rem; }
+  .a-card { background:var(--ab); border:1px solid var(--aborder); border-radius:14px; overflow:hidden; }
+  .a-card-head { padding:14px 20px; border-bottom:1px solid var(--aborder);
+    display:flex; align-items:center; justify-content:space-between; }
+  .a-card-head h6 { font-family:'Syne',sans-serif; font-weight:700; margin:0; color:#E8EAF2; }
+  .badge-low  { background:rgba(34,211,164,.12); color:var(--safe); }
+  .badge-med  { background:rgba(245,166,35,.12); color:var(--warn); }
+  .badge-high { background:rgba(255,75,110,.12); color:var(--danger); }
+  .risk-low  { color:var(--safe); }
+  .risk-med  { color:var(--warn); }
+  .risk-high { color:var(--danger); }
+  .form-control, .form-select { background:var(--ab2); border-color:var(--aborder); color:#E8EAF2; }
+  .form-control:focus, .form-select:focus { background:var(--ab2); border-color:var(--accent); color:#E8EAF2; box-shadow:0 0 0 3px rgba(79,110,255,.12); }
+  .form-control::placeholder { color:#3E4463; }
+  .modal-content { background:var(--ab); border:1px solid var(--aborder); color:#E8EAF2; }
+  .modal-header, .modal-footer { border-color:var(--aborder); }
+  @media(max-width:768px){ .admin-sidebar{display:none;} .admin-main{margin-left:0;} }
+</style>
+{% endblock %}
+
+{% block content %}
+<aside class="admin-sidebar">
+  <div class="p-3 border-bottom d-flex align-items-center justify-content-between" style="border-color:var(--aborder)!important;">
+    <div class="d-flex align-items-center gap-2" style="font-family:'Syne',sans-serif;font-weight:800;color:#E8EAF2;">
+      <div style="background:var(--accent);" class="rounded-2 p-1 px-2"><i class="bi bi-shield-fill text-white small"></i></div>
+      SafeZone <span style="color:var(--accent);">AI</span>
+    </div>
+    <span class="badge" style="background:rgba(255,75,110,.15);color:var(--danger);font-size:.6rem;">ADMIN</span>
+  </div>
+
+  <nav class="flex-grow-1 p-2">
+    <div class="a-nav-section">Overview</div>
+    <a class="a-nav-link {% block anav_dash %}{% endblock %}" href="{% url 'admin_panel:dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+    <a class="a-nav-link {% block anav_analytics %}{% endblock %}" href="{% url 'admin_panel:analytics' %}"><i class="bi bi-bar-chart"></i> Analytics</a>
+
+    <div class="a-nav-section">Crime Data</div>
+    <a class="a-nav-link {% block anav_crimes %}{% endblock %}" href="{% url 'admin_panel:crime_list' %}"><i class="bi bi-file-earmark-text"></i> Crime Records</a>
+    <a class="a-nav-link {% block anav_areas %}{% endblock %}" href="{% url 'admin_panel:area_list' %}"><i class="bi bi-geo-alt"></i> Area Management</a>
+    <a class="a-nav-link {% block anav_pending %}{% endblock %}" href="{% url 'admin_panel:pending' %}">
+      <i class="bi bi-clock-history"></i> Pending Reports
+      <span class="badge ms-auto" style="background:rgba(255,75,110,.2);color:var(--danger);">7</span>
+    </a>
+
+    <div class="a-nav-section">Management</div>
+    <a class="a-nav-link {% block anav_users %}{% endblock %}" href="{% url 'admin_panel:user_list' %}"><i class="bi bi-people"></i> Users</a>
+
+    <div class="a-nav-section">Data Management</div>
+    <a class="a-nav-link" href="/admin-panel/crimes/import/"><i class="bi bi-upload"></i> Import CSV/Excel</a>
+    <a class="a-nav-link" href="/admin-panel/user-reports/"><i class="bi bi-person-exclamation"></i> User Reports</a>
+    <div class="a-nav-section">System</div>
+    <a class="a-nav-link" href="{% url 'dashboard:home' %}"><i class="bi bi-arrow-left-circle"></i> User Site</a>
+    <a class="a-nav-link" href="{% url 'accounts:logout' %}" style="color:var(--danger);"><i class="bi bi-box-arrow-right"></i> Logout</a>
+  </nav>
+
+  <div class="m-2 p-3 rounded-3 d-flex align-items-center gap-2" style="background:var(--ab2);border:1px solid var(--aborder);">
+    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--danger),#FF8FA3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:#fff;flex-shrink:0;">SA</div>
+    <div class="overflow-hidden">
+      <div class="small fw-semibold text-truncate" style="color:#E8EAF2;">Super Admin</div>
+      <div style="font-size:.65rem;color:var(--danger);">● Administrator</div>
+    </div>
+  </div>
+</aside>
+
+<div class="admin-main">
+  <header class="admin-topbar">
+    <div>
+      <div class="small" style="color:#6B7299;">SafeZone AI › <span style="color:#E8EAF2;">{% block page_crumb %}Dashboard{% endblock %}</span></div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm rounded-2 p-2" style="background:none;border:1px solid var(--aborder);color:#6B7299;"><i class="bi bi-bell"></i></button>
+      <a href="{% url 'admin_panel:crime_add' %}" class="btn btn-sm px-3 fw-semibold" style="background:var(--accent);color:#fff;border:none;">
+        <i class="bi bi-plus me-1"></i>Add Record
+      </a>
+    </div>
+  </header>
+
+  <div class="p-4 flex-grow-1">
+    {% if messages %}
+      {% for msg in messages %}
+      <div class="alert border-0 mb-3 {% if msg.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}" style="background:rgba({% if msg.tags == 'success' %}34,211,164{% else %}255,75,110{% endif %},.1);color:{% if msg.tags == 'success' %}var(--safe){% else %}var(--danger){% endif %};">
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endif %}
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+
+<!-- SafeZone Chatbot Widget -->
+{% include 'chatbot/widget.html' with chat_context="admin" %}
+
+{% endblock %}

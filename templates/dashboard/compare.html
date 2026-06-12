@@ -1,0 +1,513 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Compare Areas{% endblock %}
+{% block nav_compare %}active{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  #compareMap { height: 420px; border-radius: 14px; border: 1.5px solid var(--border); overflow: hidden; }
+  .loc-input-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+  }
+  .loc-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); margin-bottom: 8px;
+  }
+  .loc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  .loc-input { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--text); font-family: 'DM Sans',sans-serif; font-size: .9rem; outline: none; transition: all .2s; }
+  .loc-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,255,.1); background: var(--surface); }
+  .loc-input::placeholder { color: var(--muted); }
+  .gps-btn { width: 42px; height: 42px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all .2s; flex-shrink: 0; }
+  .gps-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+  .swap-btn { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all .2s; margin: 4px auto; }
+  .swap-btn:hover { border-color: var(--primary); color: var(--primary); transform: rotate(180deg); }
+  .result-panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; animation: fadeUp .4s ease both; }
+  .area-result-card { padding: 20px; border-right: 1px solid var(--border); }
+  .area-result-card:last-child { border-right: none; }
+  .score-big { font-family: 'Syne',sans-serif; font-weight: 800; font-size: 2.8rem; line-height: 1; }
+  .crime-bar-row { margin-bottom: 7px; }
+  .crime-bar-bg { height: 5px; border-radius: 5px; background: var(--surface2); overflow: hidden; }
+  .crime-bar-fill { height: 100%; border-radius: 5px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+  .vs-badge { background: var(--surface2); border: 2px solid var(--border); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .72rem; color: var(--muted); flex-shrink: 0; }
+  .winner-tag { font-size: .62rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+  .autocomplete-list { position: absolute; z-index: 999; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); max-height: 220px; overflow-y: auto; width: 100%; top: 100%; left: 0; margin-top: 4px; }
+  .autocomplete-item { padding: 10px 14px; cursor: pointer; font-size: .85rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: var(--primary-light); color: var(--primary); }
+  .route-info { background: rgba(26,86,255,.04); border: 1px solid rgba(26,86,255,.15); border-radius: 12px; padding: 14px 18px; margin-top: 14px; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+
+  <!-- LEFT: Inputs -->
+  <div class="col-lg-4">
+    <div class="loc-input-card">
+      <h6 class="fw-bold mb-4"><i class="bi bi-bar-chart-steps me-2 text-accent"></i>Compare Area Safety</h6>
+
+      <!-- Area 1 — Current Location -->
+      <div class="mb-1">
+        <div class="loc-label">
+          <div class="loc-dot" style="background:#1A56FF;box-shadow:0 0 0 3px rgba(26,86,255,.2);"></div>
+          Current / Origin Location
+        </div>
+        <div class="search-row" style="position:relative;">
+          <input type="text" id="area1Input" class="loc-input" placeholder="e.g. Vasant Vihar, Delhi" autocomplete="off" oninput="suggest(this,'list1')" onkeydown="if(event.key==='Enter')doCompare()"/>
+          <button class="gps-btn" onclick="detectGPS(1)" title="Use my location">
+            <span id="gps1Spinner" class="spinner-border spinner-border-sm d-none" style="width:14px;height:14px;"></span>
+            <i class="bi bi-crosshair2" id="gps1Icon"></i>
+          </button>
+          <div class="autocomplete-list" id="list1" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Swap button -->
+      <div class="text-center my-1">
+        <button class="swap-btn" onclick="swapAreas()" title="Swap areas">
+          <i class="bi bi-arrow-down-up" style="font-size:.8rem;"></i>
+        </button>
+      </div>
+
+      <!-- Area 2 — Destination -->
+      <div class="mb-4">
+        <div class="loc-label">
+          <div class="loc-dot" style="background:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,.2);"></div>
+          Destination / Compare Location
+        </div>
+        <div class="search-row" style="position:relative;">
+          <input type="text" id="area2Input" class="loc-input" placeholder="e.g. Paharganj, Delhi" autocomplete="off" oninput="suggest(this,'list2')" onkeydown="if(event.key==='Enter')doCompare()"/>
+          <button class="gps-btn" onclick="detectGPS(2)" title="Use my location">
+            <span id="gps2Spinner" class="spinner-border spinner-border-sm d-none" style="width:14px;height:14px;"></span>
+            <i class="bi bi-crosshair2" id="gps2Icon"></i>
+          </button>
+          <div class="autocomplete-list" id="list2" style="display:none;"></div>
+        </div>
+      </div>
+
+      <button onclick="doCompare()" id="compareBtn"
+        style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 24px;font-weight:600;font-family:'DM Sans',sans-serif;width:100%;cursor:pointer;transition:all .2s;font-size:.92rem;"
+        onmouseover="this.style.background='#0f45e8';this.style.transform='translateY(-1px)'"
+        onmouseout="this.style.background='var(--primary)';this.style.transform=''">
+        <span id="compareSpinner" class="spinner-border spinner-border-sm d-none me-2" style="width:15px;height:15px;"></span>
+        <i class="bi bi-shield-half me-2" id="compareIcon"></i>Compare Safety
+      </button>
+
+      <div id="compareError" class="mt-3 p-3 rounded-3 d-none" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);font-size:.82rem;color:var(--danger);"></div>
+    </div>
+
+    <!-- Quick Select from seeded areas -->
+    <div class="panel p-3">
+      <div class="text-muted small fw-semibold mb-2" style="text-transform:uppercase;letter-spacing:.8px;font-size:.68rem;">Quick Select</div>
+      <div class="d-flex flex-wrap gap-2">
+        {% for area in areas %}
+        <button onclick="quickSelect('{{ area.name }}, {{ area.city }}')"
+          class="badge rounded-pill px-3 py-2 {% if area.risk_level == 'low' %}badge-low{% elif area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}"
+          style="cursor:pointer;border:none;font-size:.72rem;">
+          {{ area.name }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Map + Results -->
+  <div class="col-lg-8">
+    <!-- Map -->
+    <div class="panel p-0 mb-3" style="overflow:hidden;border-radius:14px;">
+      <div id="compareMap"></div>
+    </div>
+
+    <!-- Route info -->
+    <div id="routeInfoBox" class="route-info d-none">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-sign-turn-right-fill text-accent"></i>
+          <div>
+            <div class="fw-semibold small" id="routeSummary">Route analysis</div>
+            <div class="text-muted" id="routeDetail" style="font-size:.75rem;"></div>
+          </div>
+        </div>
+        <span id="routeRiskPill" class="badge rounded-pill px-3 py-1"></span>
+      </div>
+    </div>
+
+    <!-- Comparison Result Cards -->
+    <div id="compareResults" class="result-panel mt-3 d-none">
+      <div class="d-flex align-items-stretch">
+        <!-- Area 1 -->
+        <div class="area-result-card flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:10px;height:10px;border-radius:50%;background:#1A56FF;flex-shrink:0;"></div>
+            <span class="fw-bold small" id="r1Name">Area 1</span>
+            <span id="r1Winner" class="winner-tag ms-auto d-none" style="background:rgba(0,196,140,.12);color:var(--safe);">🏆 Safer</span>
+          </div>
+          <div class="score-big mb-1" id="r1Score">—</div>
+          <div style="font-size:.72rem;color:var(--muted);">Risk Score / 100</div>
+          <span id="r1Pill" class="badge rounded-pill px-3 py-1 mt-2 mb-3 d-inline-block"></span>
+          <div id="r1Bars"></div>
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            <span class="text-muted small" id="r1Crimes"></span>
+            <span class="text-muted small" id="r1Trend"></span>
+          </div>
+        </div>
+
+        <!-- VS -->
+        <div class="d-flex align-items-center justify-content-center px-2">
+          <div class="vs-badge">VS</div>
+        </div>
+
+        <!-- Area 2 -->
+        <div class="area-result-card flex-grow-1">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:10px;height:10px;border-radius:50%;background:#EF4444;flex-shrink:0;"></div>
+            <span class="fw-bold small" id="r2Name">Area 2</span>
+            <span id="r2Winner" class="winner-tag ms-auto d-none" style="background:rgba(0,196,140,.12);color:var(--safe);">🏆 Safer</span>
+          </div>
+          <div class="score-big mb-1" id="r2Score">—</div>
+          <div style="font-size:.72rem;color:var(--muted);">Risk Score / 100</div>
+          <span id="r2Pill" class="badge rounded-pill px-3 py-1 mt-2 mb-3 d-inline-block"></span>
+          <div id="r2Bars"></div>
+          <div class="mt-3 d-flex gap-2 flex-wrap">
+            <span class="text-muted small" id="r2Crimes"></span>
+            <span class="text-muted small" id="r2Trend"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="p-4 border-top" id="verdictBox">
+        <div class="fw-bold mb-1" id="verdictTitle"></div>
+        <p class="text-muted small mb-0" id="verdictText"></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map init ──
+const map = L.map('compareMap', { zoomControl: true }).setView([22.5, 78.9], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18,
+}).addTo(map);
+
+let mapLayers = [];
+let quickTarget = 1;  // which input to fill next from quick select
+
+const COLORS = { low:'#00C48C', medium:'#F59E0B', high:'#EF4444' };
+const BCLS   = { low:'badge-low', medium:'badge-med', high:'badge-high' };
+const LABELS = { low:'✓ LOW RISK', medium:'⚡ MEDIUM RISK', high:'⚠ HIGH RISK' };
+
+// Area data from server
+const ALL_AREAS = [
+  {% for area in areas %}
+  { id:{{ area.id }}, name:"{{ area.name }}", city:"{{ area.city }}", score:{{ area.risk_score }}, level:"{{ area.risk_level }}", trend:"{{ area.trend }}" },
+  {% endfor %}
+];
+
+function clearMapLayers() {
+  mapLayers.forEach(l => map.removeLayer(l));
+  mapLayers = [];
+}
+
+// ── Autocomplete ──
+function suggest(input, listId) {
+  const q    = input.value.trim().toLowerCase();
+  const list = document.getElementById(listId);
+  if (q.length < 2) { list.style.display = 'none'; return; }
+
+  const matches = ALL_AREAS.filter(a =>
+    a.name.toLowerCase().includes(q) || a.city.toLowerCase().includes(q)
+  ).slice(0, 6);
+
+  if (!matches.length) { list.style.display = 'none'; return; }
+
+  list.innerHTML = matches.map(a => `
+    <div class="autocomplete-item" onclick="selectArea('${a.name}, ${a.city}', '${listId}', '${input.id}')">
+      <span style="font-size:.8rem;">📍</span>
+      <div>
+        <div class="fw-semibold" style="font-size:.84rem;">${a.name}</div>
+        <div style="font-size:.72rem;color:var(--muted);">${a.city} &nbsp;·&nbsp;
+          <span class="${BCLS[a.level]}" style="font-size:.62rem;padding:1px 6px;border-radius:4px;">${a.score}</span>
+        </div>
+      </div>
+    </div>`).join('');
+  list.style.display = 'block';
+}
+
+function selectArea(value, listId, inputId) {
+  document.getElementById(inputId).value = value;
+  document.getElementById(listId).style.display = 'none';
+}
+
+// Hide autocomplete on outside click
+document.addEventListener('click', e => {
+  ['list1','list2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.contains(e.target)) el.style.display = 'none';
+  });
+});
+
+// ── Quick Select ──
+function quickSelect(value) {
+  const i1 = document.getElementById('area1Input').value;
+  const i2 = document.getElementById('area2Input').value;
+  if (!i1) { document.getElementById('area1Input').value = value; }
+  else if (!i2) { document.getElementById('area2Input').value = value; }
+  else { document.getElementById('area1Input').value = value; }
+}
+
+// ── Swap ──
+function swapAreas() {
+  const a = document.getElementById('area1Input');
+  const b = document.getElementById('area2Input');
+  [a.value, b.value] = [b.value, a.value];
+}
+
+// ── GPS Detection ──
+function detectGPS(which) {
+  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  const spinner = document.getElementById(`gps${which}Spinner`);
+  const icon    = document.getElementById(`gps${which}Icon`);
+  spinner.classList.remove('d-none'); icon.classList.add('d-none');
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      // Reverse geocode
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`, {
+        headers: { 'User-Agent': 'SafeZoneAI/1.0' }
+      })
+      .then(r => r.json())
+      .then(geo => {
+        const addr  = geo.address || {};
+        const area  = addr.suburb || addr.neighbourhood || addr.district || '';
+        const city  = addr.city || addr.town || addr.village || '';
+        const query = area ? `${area}, ${city}` : city || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        document.getElementById(`area${which}Input`).value = query;
+        spinner.classList.add('d-none'); icon.classList.remove('d-none');
+
+        // Add user marker on map
+        const youIcon = L.divIcon({
+          html: `<div style="width:16px;height:16px;border-radius:50%;background:#1A56FF;border:3px solid #fff;box-shadow:0 0 0 4px rgba(26,86,255,.3);"></div>`,
+          className:'', iconSize:[16,16], iconAnchor:[8,8]
+        });
+        const m = L.marker([lat, lng], { icon: youIcon }).addTo(map)
+          .bindPopup(`<b>📍 ${which === 1 ? 'Your Location' : 'Destination'}</b><br><small>${query}</small>`);
+        mapLayers.push(m);
+        map.setView([lat, lng], 12);
+      })
+      .catch(() => {
+        document.getElementById(`area${which}Input`).value = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        spinner.classList.add('d-none'); icon.classList.remove('d-none');
+      });
+    },
+    err => {
+      spinner.classList.add('d-none'); icon.classList.remove('d-none');
+      const msgs = { 1:'Location denied', 2:'GPS unavailable', 3:'Timed out' };
+      alert(msgs[err.code] || 'Location error');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// ── Main Compare Function ──
+function doCompare() {
+  const q1 = document.getElementById('area1Input').value.trim();
+  const q2 = document.getElementById('area2Input').value.trim();
+  const errBox = document.getElementById('compareError');
+
+  if (!q1 || !q2) {
+    errBox.textContent = '⚠️ Please enter both locations to compare.';
+    errBox.classList.remove('d-none');
+    setTimeout(() => errBox.classList.add('d-none'), 3000);
+    return;
+  }
+  if (q1.toLowerCase() === q2.toLowerCase()) {
+    errBox.textContent = '⚠️ Please enter two different locations.';
+    errBox.classList.remove('d-none');
+    setTimeout(() => errBox.classList.add('d-none'), 3000);
+    return;
+  }
+
+  errBox.classList.add('d-none');
+  const btn     = document.getElementById('compareBtn');
+  const spinner = document.getElementById('compareSpinner');
+  const icon    = document.getElementById('compareIcon');
+  btn.disabled  = true;
+  spinner.classList.remove('d-none'); icon.classList.add('d-none');
+
+  // Fetch both areas simultaneously
+  Promise.all([
+    fetch(`{% url 'dashboard:search' %}?q=${encodeURIComponent(q1)}`, {headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.json()),
+    fetch(`{% url 'dashboard:search' %}?q=${encodeURIComponent(q2)}`, {headers:{'X-Requested-With':'XMLHttpRequest'}}).then(r=>r.json()),
+  ])
+  .then(([d1, d2]) => {
+    btn.disabled = false;
+    spinner.classList.add('d-none'); icon.classList.remove('d-none');
+    if (d1.error || d2.error) { errBox.textContent = d1.error || d2.error; errBox.classList.remove('d-none'); return; }
+    renderCompare(d1, d2);
+  })
+  .catch(() => {
+    btn.disabled = false;
+    spinner.classList.add('d-none'); icon.classList.remove('d-none');
+    errBox.textContent = '❌ Failed to fetch data. Please try again.';
+    errBox.classList.remove('d-none');
+  });
+}
+
+function renderCompare(d1, d2) {
+  clearMapLayers();
+
+  const c1 = COLORS[d1.level] || '#6B7594';
+  const c2 = COLORS[d2.level] || '#6B7594';
+
+  // ── Update result cards ──
+  function fillCard(prefix, data, color) {
+    document.getElementById(`${prefix}Name`).textContent  = data.area_name;
+    document.getElementById(`${prefix}Score`).textContent = data.score;
+    document.getElementById(`${prefix}Score`).style.color = color;
+    const pill = document.getElementById(`${prefix}Pill`);
+    pill.textContent = LABELS[data.level];
+    pill.className   = `badge rounded-pill px-3 py-1 mt-2 mb-3 d-inline-block ${BCLS[data.level]}`;
+
+    const types  = data.crime_types || {};
+    const keys   = ['theft','violence','traffic','fraud','burglary'];
+    const labels = ['Theft','Violence','Traffic','Fraud','Burglary'];
+    document.getElementById(`${prefix}Bars`).innerHTML = keys.map((k, i) => `
+      <div class="crime-bar-row">
+        <div class="d-flex justify-content-between mb-1" style="font-size:.68rem;">
+          <span class="text-muted">${labels[i]}</span>
+          <span class="fw-semibold">${types[k] || 0}%</span>
+        </div>
+        <div class="crime-bar-bg">
+          <div class="crime-bar-fill" style="width:${types[k] || 0}%;background:${color};"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  fillCard('r1', d1, c1);
+  fillCard('r2', d2, c2);
+
+  // Winner badges
+  const w1 = document.getElementById('r1Winner');
+  const w2 = document.getElementById('r2Winner');
+  w1.classList.add('d-none'); w2.classList.add('d-none');
+  if (d1.score < d2.score) w1.classList.remove('d-none');
+  else if (d2.score < d1.score) w2.classList.remove('d-none');
+
+  // Verdict
+  const diff  = Math.abs(d1.score - d2.score);
+  const safer = d1.score <= d2.score ? d1.area_name : d2.area_name;
+  const riskier = d1.score > d2.score ? d1.area_name : d2.area_name;
+  const vBox = document.getElementById('verdictBox');
+  const titles = {
+    same:   '⚖️ Similar Risk Levels',
+    small:  `✅ ${safer} is slightly safer`,
+    big:    `🏆 ${safer} is significantly safer`,
+  };
+  const t = diff === 0 ? 'same' : diff < 20 ? 'small' : 'big';
+  document.getElementById('verdictTitle').textContent = titles[t];
+  document.getElementById('verdictText').textContent  = diff === 0
+    ? `Both areas have similar risk scores. Exercise same level of caution in both.`
+    : `${safer} (score: ${Math.min(d1.score,d2.score)}) is ${diff} points safer than ${riskier} (score: ${Math.max(d1.score,d2.score)}). ${d1.level === 'high' || d2.level === 'high' ? 'Consider avoiding the high-risk area.' : ''}`;
+  vBox.style.background = diff === 0 ? 'rgba(245,158,11,.04)' : 'rgba(0,196,140,.04)';
+
+  document.getElementById('compareResults').classList.remove('d-none');
+
+  // ── Map: place markers + draw road ──
+  plotOnMap(d1, d2, c1, c2);
+}
+
+// ── Plot both areas on map with a route line ──
+async function plotOnMap(d1, d2, c1, c2) {
+  clearMapLayers();
+
+  // Use lat/lng directly from search API response (no extra heatmap_data call needed)
+  // d1.lat / d1.lng are now returned by dashboard:search view
+  const lat1 = d1.lat || null;
+  const lng1 = d1.lng || null;
+  const lat2 = d2.lat || null;
+  const lng2 = d2.lng || null;
+
+  if (!lat1 || !lng1 || !lat2 || !lng2) {
+    // Coordinates unavailable — show India overview
+    map.setView([22.5, 78.9], 5);
+    return;
+  }
+
+  // Marker 1 (origin — blue)
+  const icon1 = L.divIcon({
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:${c1};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;color:#fff;">A</div>`,
+    className: '', iconSize: [24,24], iconAnchor: [12,12]
+  });
+  const m1 = L.marker([lat1, lng1], { icon: icon1 }).addTo(map)
+    .bindPopup(`<div style="font-family:'DM Sans',sans-serif;padding:4px;"><b style="color:${c1};">${d1.area_name}</b><br><span style="font-size:.8rem;color:#6B7594;">Risk: ${d1.score}/100 · ${d1.level.toUpperCase()}</span></div>`);
+  mapLayers.push(m1);
+
+  // Marker 2 (destination — red)
+  const icon2 = L.divIcon({
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:${c2};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;color:#fff;">B</div>`,
+    className: '', iconSize: [24,24], iconAnchor: [12,12]
+  });
+  const m2 = L.marker([lat2, lng2], { icon: icon2 }).addTo(map)
+    .bindPopup(`<div style="font-family:'DM Sans',sans-serif;padding:4px;"><b style="color:${c2};">${d2.area_name}</b><br><span style="font-size:.8rem;color:#6B7594;">Risk: ${d2.score}/100 · ${d2.level.toUpperCase()}</span></div>`);
+  mapLayers.push(m2);
+
+  // Try OSRM routing (free, no API key) for real road path
+  try {
+    const routeUrl = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`;
+    const routeRes = await fetch(routeUrl);
+    const routeData = await routeRes.json();
+
+    if (routeData.code === 'Ok' && routeData.routes && routeData.routes[0]) {
+      const route    = routeData.routes[0];
+      const coords   = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      const dist     = (route.distance / 1000).toFixed(1);
+      const durMin   = Math.round(route.duration / 60);
+      const overallScore = Math.round((d1.score + d2.score) / 2);
+      const routeLevel  = overallScore <= 35 ? 'low' : overallScore <= 65 ? 'medium' : 'high';
+      const routeColor  = COLORS[routeLevel];
+
+      // Draw real road route
+      const routeLine = L.polyline(coords, {
+        color:     routeColor,
+        weight:    5,
+        opacity:   0.8,
+        dashArray: routeLevel === 'high' ? '10,6' : null,
+      }).addTo(map);
+      mapLayers.push(routeLine);
+
+      // Route info box
+      document.getElementById('routeSummary').textContent = `${d1.area_name} → ${d2.area_name}`;
+      document.getElementById('routeDetail').textContent  = `${dist} km · ~${durMin} min by road`;
+      const rPill = document.getElementById('routeRiskPill');
+      rPill.textContent = LABELS[routeLevel];
+      rPill.className   = `badge rounded-pill px-3 py-1 ${BCLS[routeLevel]}`;
+      document.getElementById('routeInfoBox').classList.remove('d-none');
+
+      // Fit map to route
+      map.fitBounds(routeLine.getBounds().pad(0.15));
+    } else {
+      throw new Error('No route');
+    }
+  } catch {
+    // Fallback: straight dashed line
+    const line = L.polyline([[lat1,lng1],[lat2,lng2]], {
+      color:'#1A56FF', weight:3, dashArray:'8,6', opacity:.7
+    }).addTo(map);
+    mapLayers.push(line);
+    map.fitBounds([[lat1,lng1],[lat2,lng2]], { padding:[40,40] });
+  }
+
+  m1.openPopup();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Analytics{% endblock %}
+{% block anav_analytics %}active{% endblock %}
+{% block admin_content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="a-stat-card text-center"><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.8rem;color:var(--danger);">{{ risk_dist|length }}</div><div class="small" style="color:#6B7299;">Risk Categories</div></div></div>
+  <div class="col-6 col-md-3"><div class="a-stat-card text-center"><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.8rem;color:var(--safe);">98.4%</div><div class="small" style="color:#6B7299;">AI Accuracy</div></div></div>
+  <div class="col-6 col-md-3"><div class="a-stat-card text-center"><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.8rem;color:var(--accent);">{{ searches_today }}</div><div class="small" style="color:#6B7299;">Searches Today</div></div></div>
+  <div class="col-6 col-md-3"><div class="a-stat-card text-center"><div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.8rem;color:var(--warn);">{{ crime_by_type|length }}</div><div class="small" style="color:#6B7299;">Crime Categories</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="a-card">
+      <div class="a-card-head"><h6>Crime by Type</h6></div>
+      <div class="p-4">
+        {% with max_count=crime_by_type.0.count|default:1 %}
+        {% for item in crime_by_type %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small style="color:#9BA3BC;">{{ item.crime_type|title }}</small>
+            <small class="fw-bold" style="color:#E8EAF2;">{{ item.count }}</small>
+          </div>
+          <div style="height:6px;border-radius:6px;background:#21253A;overflow:hidden;">
+            <div style="height:100%;border-radius:6px;background:var(--accent);width:{% widthratio item.count max_count 100 %}%;transition:width 1s;"></div>
+          </div>
+        </div>
+        {% empty %}
+        <p style="color:#6B7299;">No crime data available.</p>
+        {% endfor %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="a-card">
+      <div class="a-card-head"><h6>Top High-Risk Areas</h6></div>
+      <div class="p-4">
+        {% for area in top_areas|slice:":6" %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small style="color:#9BA3BC;">{{ area.name }}, {{ area.city }}</small>
+            <small class="fw-bold {% if area.risk_level == 'low' %}risk-low{% elif area.risk_level == 'medium' %}risk-med{% else %}risk-high{% endif %}">{{ area.risk_score }}</small>
+          </div>
+          <div style="height:6px;border-radius:6px;background:#21253A;overflow:hidden;">
+            <div style="height:100%;border-radius:6px;background:{% if area.risk_level == 'high' %}var(--danger){% elif area.risk_level == 'medium' %}var(--warn){% else %}var(--safe){% endif %};width:{{ area.risk_score }}%;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="a-card">
+  <div class="a-card-head"><h6>Risk Level Distribution</h6></div>
+  <div class="p-4 d-flex gap-4 flex-wrap">
+    {% for item in risk_dist %}
+    <div class="text-center p-3 rounded-3 flex-grow-1" style="background:var(--ab2);border:1px solid var(--aborder);">
+      <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:2rem;color:{% if item.risk_level == 'low' %}var(--safe){% elif item.risk_level == 'medium' %}var(--warn){% else %}var(--danger){% endif %};">{{ item.count }}</div>
+      <div class="small" style="color:#9BA3BC;">{{ item.risk_level|title }} Risk Areas</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

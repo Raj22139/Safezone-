@@ -1,0 +1,76 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Anomaly Detection{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+  <div class="d-flex align-items-center gap-3">
+    <div class="icon-box" style="background:rgba(239,68,68,.1);"><i class="bi bi-exclamation-diamond-fill fs-5" style="color:var(--danger);"></i></div>
+    <div><h5 class="fw-bold mb-0">Crime Spike Detection</h5><small class="text-muted">{{ area.name }}, {{ area.city }} — Anomaly Analysis</small></div>
+  </div>
+  <a href="{% url 'dashboard:area_detail' area.id %}" class="btn-outline-custom py-2 px-3 text-decoration-none" style="border-radius:9px;font-size:.82rem;"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="panel p-4 {% if result.is_anomaly %}border-danger{% endif %}" style="{% if result.is_anomaly %}border-color:var(--danger)!important;background:rgba(239,68,68,.02)!important;{% endif %}">
+      <div class="text-center mb-4">
+        <div style="font-size:3.5rem;margin-bottom:8px;">{% if result.is_anomaly %}🚨{% else %}✅{% endif %}</div>
+        <h5 class="fw-bold mb-1" style="color:{% if result.is_anomaly %}var(--danger){% else %}var(--safe){% endif %};">
+          {% if result.is_anomaly %}Crime Spike Detected!{% else %}Normal Activity{% endif %}
+        </h5>
+        <p class="text-muted small">{{ result.message }}</p>
+      </div>
+      <div class="row g-3">
+        <div class="col-6 text-center">
+          <div class="p-3 rounded-3" style="background:var(--surface2);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.5rem;color:var(--danger);">{{ result.recent_30d }}</div>
+            <div class="text-muted small">Last 30 Days</div>
+          </div>
+        </div>
+        <div class="col-6 text-center">
+          <div class="p-3 rounded-3" style="background:var(--surface2);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.5rem;color:var(--muted);">{{ result.previous_30d }}</div>
+            <div class="text-muted small">Previous 30 Days</div>
+          </div>
+        </div>
+        <div class="col-12 text-center">
+          <div class="p-3 rounded-3" style="background:{% if result.change_percent > 0 %}rgba(239,68,68,.06){% else %}rgba(0,196,140,.06){% endif %};">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:2rem;color:{% if result.change_percent > 0 %}var(--danger){% else %}var(--safe){% endif %};">
+              {% if result.change_percent > 0 %}+{% endif %}{{ result.change_percent }}%
+            </div>
+            <div class="text-muted small">Change vs Previous Month</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="panel p-4 h-100">
+      <h6 class="fw-bold mb-3">Anomaly Level</h6>
+      {% if result.anomaly_level == 'high' %}
+      <div class="p-4 rounded-3 text-center mb-3" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);">
+        <div style="font-size:2.5rem;">🔴</div>
+        <div class="fw-bold mt-2" style="color:var(--danger);">HIGH ANOMALY</div>
+        <div class="text-muted small mt-1">Crime rate more than doubled. Immediate attention required.</div>
+      </div>
+      {% elif result.anomaly_level == 'medium' %}
+      <div class="p-4 rounded-3 text-center mb-3" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);">
+        <div style="font-size:2.5rem;">🟡</div>
+        <div class="fw-bold mt-2" style="color:var(--warn);">MEDIUM ANOMALY</div>
+        <div class="text-muted small mt-1">Notable spike detected. Monitor closely.</div>
+      </div>
+      {% else %}
+      <div class="p-4 rounded-3 text-center mb-3" style="background:rgba(0,196,140,.06);border:1px solid rgba(0,196,140,.2);">
+        <div style="font-size:2.5rem;">🟢</div>
+        <div class="fw-bold mt-2" style="color:var(--safe);">NORMAL</div>
+        <div class="text-muted small mt-1">Crime levels within expected range.</div>
+      </div>
+      {% endif %}
+      <div class="text-muted small">
+        <i class="bi bi-info-circle me-1"></i>
+        Anomaly detection compares last 30 days vs previous 30 days. A spike &gt;50% is flagged as anomaly.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

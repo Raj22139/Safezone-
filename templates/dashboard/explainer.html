@@ -1,0 +1,86 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}AI Explanation — {{ area.name }}{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<style>
+  .shap-bar { height: 8px; border-radius: 4px; transition: width 1.2s ease; }
+  .contrib-card { border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; border: 1.5px solid var(--border); transition: var(--transition); }
+  .contrib-card:hover { transform: translateX(4px); border-color: var(--primary); }
+  .impact-up   { background: rgba(239,68,68,.06);  border-color: rgba(239,68,68,.2)!important; }
+  .impact-down { background: rgba(0,196,140,.06);  border-color: rgba(0,196,140,.2)!important; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'dashboard:area_detail' area.id %}" class="btn-outline-custom py-2 px-3 text-decoration-none" style="border-radius:9px;font-size:.82rem;"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  <div>
+    <h5 class="fw-bold mb-0">🧠 AI Explanation — {{ area.name }}</h5>
+    <small class="text-muted">{{ explanation.method }} · Why is this area {{ area.risk_level }} risk?</small>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Score Summary -->
+  <div class="col-md-4">
+    <div class="panel p-4 text-center mb-3">
+      <div style="width:90px;height:90px;border-radius:50%;margin:0 auto 16px;
+        border:4px solid {% if area.risk_level == 'low' %}var(--safe){% elif area.risk_level == 'medium' %}var(--warn){% else %}var(--danger){% endif %};
+        background:{% if area.risk_level == 'low' %}rgba(0,196,140,.08){% elif area.risk_level == 'medium' %}rgba(245,158,11,.08){% else %}rgba(239,68,68,.08){% endif %};
+        display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;
+          color:{% if area.risk_level == 'low' %}var(--safe){% elif area.risk_level == 'medium' %}var(--warn){% else %}var(--danger){% endif %};">{{ area.risk_score }}</span>
+        <span class="text-muted" style="font-size:.6rem;">/100</span>
+      </div>
+      <h6 class="fw-bold">{{ area.name }}</h6>
+      <p class="text-muted small mb-3">{{ explanation.explanation }}</p>
+      <span class="badge rounded-pill px-3 py-2 {% if area.risk_level == 'low' %}badge-low{% elif area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}">
+        {{ area.risk_level|upper }} RISK
+      </span>
+    </div>
+
+    <!-- Top Risk Factors -->
+    {% if explanation.top_risk_factors %}
+    <div class="panel p-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-arrow-up-circle-fill me-2" style="color:var(--danger);"></i>Top Risk Factors</h6>
+      {% for f in explanation.top_risk_factors %}
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);font-size:.8rem;"></i>
+        <span class="small fw-semibold">{{ f.feature }}</span>
+        {% if f.value %}<span class="text-muted small ms-auto">{{ f.value }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Feature Contributions -->
+  <div class="col-md-8">
+    <div class="panel p-4">
+      <h6 class="fw-bold mb-4"><i class="bi bi-bar-chart-fill me-2 text-accent"></i>Feature Impact Analysis (SHAP Values)</h6>
+      {% for c in explanation.contributions %}
+      <div class="contrib-card {% if c.impact == 'increases_risk' %}impact-up{% elif c.impact == 'decreases_risk' %}impact-down{% endif %}">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div>
+            <span class="fw-semibold small">{{ c.feature }}</span>
+            <span class="text-muted ms-2" style="font-size:.72rem;">Value: {{ c.value }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold small" style="color:{% if c.impact == 'increases_risk' %}var(--danger){% elif c.impact == 'decreases_risk' %}var(--safe){% else %}var(--muted){% endif %};">
+              {% if c.shap_value > 0 %}+{% endif %}{{ c.shap_value }}
+            </span>
+            <span class="badge" style="font-size:.62rem;background:{% if c.impact == 'increases_risk' %}rgba(239,68,68,.12);color:var(--danger){% elif c.impact == 'decreases_risk' %}rgba(0,196,140,.12);color:var(--safe){% else %}var(--surface2);color:var(--muted){% endif %};">
+              {{ c.impact|replace:'_',' '|title }}
+            </span>
+          </div>
+        </div>
+        <div style="background:var(--surface2);height:6px;border-radius:4px;overflow:hidden;">
+          <div class="shap-bar" style="width:{{ c.importance|floatformat:0|add:0 }}%;{% if c.importance > 5 %}width:100%{% else %}width:{{ c.importance }}0%{% endif %}background:{% if c.impact == 'increases_risk' %}var(--danger){% elif c.impact == 'decreases_risk' %}var(--safe){% else %}var(--muted){% endif %};"></div>
+        </div>
+        <div class="text-muted mt-1" style="font-size:.72rem;">{{ c.description }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

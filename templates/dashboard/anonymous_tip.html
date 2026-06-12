@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Submit Anonymous Tip — SafeZone AI{% endblock %}
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center py-5" style="background:var(--bg);">
+  <div class="card shadow-sm p-4 p-md-5" style="width:100%;max-width:540px;border-radius:18px;">
+    <div class="text-center mb-4">
+      <div style="font-size:2.5rem;margin-bottom:10px;">🕵️</div>
+      <h4 class="fw-bold mb-1">Anonymous Crime Tip</h4>
+      <p class="text-muted small">Your identity is completely protected. No login required.</p>
+      <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill"><i class="bi bi-shield-lock me-1"></i>100% Anonymous</span>
+    </div>
+    {% if messages %}{% for msg in messages %}<div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}success{% endif %} mb-3">{{ msg }}</div>{% endfor %}{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold text-muted">Location *</label>
+          <input type="text" name="location_text" class="form-control" placeholder="Where did this happen?" required/>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-muted">Nearest Area</label>
+          <select name="area_id" class="form-select">
+            <option value="">Select area (optional)</option>
+            {% for area in areas %}<option value="{{ area.id }}">{{ area.name }}, {{ area.city }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-muted">Crime Type *</label>
+          <select name="crime_type" class="form-select" required>
+            <option value="">Select...</option>
+            {% for val, label in crime_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-muted">Incident Date</label>
+          <input type="date" name="incident_date" class="form-control"/>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold text-muted">Severity: <b id="sevLabel">5</b>/10</label>
+          <input type="range" name="severity" class="form-range mt-2" min="1" max="10" value="5" oninput="document.getElementById('sevLabel').textContent=this.value"/>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold text-muted">Description *</label>
+          <textarea name="description" class="form-control" rows="4" placeholder="Describe what you witnessed..." required minlength="15"></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-accent px-4 fw-semibold w-100"><i class="bi bi-send me-2"></i>Submit Anonymously</button>
+        </div>
+      </div>
+    </form>
+    <p class="text-center text-muted small mt-3 mb-0"><a href="{% url 'dashboard:tips_list' %}" class="text-accent">View all anonymous tips →</a></p>
+  </div>
+</div>
+{% endblock %}

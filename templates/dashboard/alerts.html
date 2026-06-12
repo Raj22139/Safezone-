@@ -1,0 +1,75 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Email Alerts{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="fw-bold mb-0"><i class="bi bi-bell me-2 text-accent"></i>My Alert Subscriptions</h6>
+        <span class="badge bg-primary bg-opacity-10 text-primary">{{ subscriptions.count }} active</span>
+      </div>
+      {% for sub in subscriptions %}
+      <div class="d-flex align-items-center gap-3 p-3 border-bottom" id="sub-{{ sub.pk }}">
+        <div class="icon-box" style="background:rgba(26,86,255,.08);width:38px;height:38px;border-radius:9px;">
+          <i class="bi bi-bell-fill text-accent small"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small">{{ sub.area.name }}, {{ sub.area.city }}</div>
+          <div class="d-flex gap-2 mt-1">
+            <span class="badge bg-light text-muted" style="font-size:.65rem;">{{ sub.get_alert_type_display }}</span>
+            <span class="badge {% if sub.area.risk_level == 'low' %}badge-low{% elif sub.area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}" style="font-size:.65rem;">{{ sub.area.risk_level|title }} Risk — {{ sub.area.risk_score }}</span>
+          </div>
+        </div>
+        <button onclick="unsubscribe({{ sub.pk }})" class="btn btn-sm btn-outline-danger py-1 px-2">
+          <i class="bi bi-bell-slash"></i>
+        </button>
+      </div>
+      {% empty %}
+      <div class="p-5 text-center text-muted">
+        <i class="bi bi-bell-slash fs-1 d-block mb-3"></i>
+        <h6>No Active Alerts</h6>
+        <p class="small">Subscribe to an area from its detail page to get email alerts.</p>
+        <a href="{% url 'dashboard:home' %}" class="btn btn-accent btn-sm px-4">Search Areas</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-accent"></i>Alert Types</h6>
+      <div class="d-flex flex-column gap-3">
+        <div class="p-3 rounded-3" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);">
+          <div class="fw-semibold small mb-1">🚨 High Risk Alert</div>
+          <div class="text-muted" style="font-size:.78rem;">Get notified when an area enters High Risk zone (score > 65)</div>
+        </div>
+        <div class="p-3 rounded-3" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);">
+          <div class="fw-semibold small mb-1">⚡ Any Change Alert</div>
+          <div class="text-muted" style="font-size:.78rem;">Receive alerts whenever the risk level changes in any direction</div>
+        </div>
+        <div class="p-3 rounded-3" style="background:rgba(26,86,255,.06);border:1px solid rgba(26,86,255,.15);">
+          <div class="fw-semibold small mb-1">📊 Weekly Summary</div>
+          <div class="text-muted" style="font-size:.78rem;">Get a weekly safety summary for your subscribed areas every Monday</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function unsubscribe(pk) {
+  if (!confirm('Remove this alert subscription?')) return;
+  fetch(`/dashboard/alerts/unsubscribe/${pk}/`, {
+    method:'POST',
+    headers:{'X-CSRFToken':'{{ csrf_token }}','X-Requested-With':'XMLHttpRequest'}
+  }).then(()=>{
+    const row = document.getElementById(`sub-${pk}`);
+    row.style.opacity = '0'; row.style.transition='opacity .3s';
+    setTimeout(()=>row.remove(), 300);
+  });
+}
+</script>
+{% endblock %}

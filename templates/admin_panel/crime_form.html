@@ -1,0 +1,84 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}{% if edit %}Edit{% else %}Add{% endif %} Crime Record{% endblock %}
+{% block anav_crimes %}active{% endblock %}
+
+{% block admin_content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="a-card">
+      <div class="a-card-head">
+        <div>
+          <h6>{% if edit %}Edit Crime Record{% else %}Add New Crime Record{% endif %}</h6>
+          <small style="color:#6B7299;">{% if edit %}Update existing record details{% else %}Enter details of the new crime incident{% endif %}</small>
+        </div>
+        <a href="{% url 'admin_panel:crime_list' %}" class="btn btn-sm" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+      </div>
+
+      <form method="post" class="p-4">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-12">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Area *</label>
+            <select name="area" class="form-select" required>
+              <option value="">Select area...</option>
+              {% for a in areas %}
+              <option value="{{ a.pk }}" {% if record and record.area.pk == a.pk %}selected{% endif %}>
+                {{ a.name }}, {{ a.city }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Crime Type *</label>
+            <select name="crime_type" class="form-select" required>
+              <option value="">Select type...</option>
+              {% for val, label in crime_types %}
+              <option value="{{ val }}" {% if record and record.crime_type == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Incident Date *</label>
+            <input type="date" name="incident_date" class="form-control"
+              value="{% if record %}{{ record.incident_date|date:'Y-m-d' }}{% endif %}" required/>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Severity (1–10) *</label>
+            <input type="number" name="severity" class="form-control" min="1" max="10"
+              value="{% if record %}{{ record.severity }}{% else %}5{% endif %}" required/>
+            <div class="form-text" style="color:#3E4463;">1 = Minor incident, 10 = Extreme</div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Status</label>
+            <select name="status" class="form-select">
+              <option value="approved" {% if not record or record.status == 'approved' %}selected{% endif %}>Approved</option>
+              <option value="pending"  {% if record and record.status == 'pending' %}selected{% endif %}>Pending</option>
+              <option value="rejected" {% if record and record.status == 'rejected' %}selected{% endif %}>Rejected</option>
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label small fw-semibold" style="color:#9BA3BC;text-transform:uppercase;letter-spacing:.8px;">Description *</label>
+            <textarea name="description" class="form-control" rows="4"
+              placeholder="Describe the crime incident in detail..." required>{% if record %}{{ record.description }}{% endif %}</textarea>
+          </div>
+
+          <div class="col-12 d-flex gap-2 pt-2">
+            <button type="submit" class="btn fw-semibold px-4" style="background:var(--accent);color:#fff;border:none;">
+              <i class="bi bi-{% if edit %}check-lg{% else %}plus-lg{% endif %} me-2"></i>
+              {% if edit %}Update Record{% else %}Save Record{% endif %}
+            </button>
+            <a href="{% url 'admin_panel:crime_list' %}" class="btn" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

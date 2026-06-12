@@ -1,0 +1,217 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Route Safety Checker{% endblock %}
+{% block nav_route %}active{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<style>
+  #routeMap { height:400px; border-radius:14px; border:1.5px solid var(--border); }
+  .route-point { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 20px; }
+  .risk-step { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .risk-step:last-child { border-bottom:none; }
+  .step-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card p-4 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="icon-box" style="background:rgba(26,86,255,.08);"><i class="bi bi-sign-turn-right text-accent fs-5"></i></div>
+        <div><h6 class="fw-bold mb-0">Route Safety Checker</h6><small class="text-muted">Check safety from A to B</small></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold text-muted">From (Origin)</label>
+        <div class="input-group">
+          <span class="input-group-text bg-success text-white border-0">🟢</span>
+          <input type="text" id="originInput" class="form-control" placeholder="e.g. Vasant Vihar, Delhi"/>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label small fw-semibold text-muted">To (Destination)</label>
+        <div class="input-group">
+          <span class="input-group-text bg-danger text-white border-0">🔴</span>
+          <input type="text" id="destInput" class="form-control" placeholder="e.g. Paharganj, Delhi"/>
+        </div>
+      </div>
+      <button class="btn btn-accent w-100 fw-semibold py-2" onclick="analyzeRoute()">
+        <span id="routeSpinner" class="spinner-border spinner-border-sm me-2 d-none"></span>
+        <i class="bi bi-shield-check me-2" id="routeIcon"></i>Check Route Safety
+      </button>
+    </div>
+
+    <!-- Recent Searches -->
+    {% if recent_routes %}
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3 small text-muted text-uppercase" style="letter-spacing:.8px;">Recent Routes</h6>
+      {% for r in recent_routes %}
+      <div class="d-flex align-items-center gap-2 py-2 border-bottom" style="font-size:.82rem;">
+        <i class="bi bi-arrow-right text-muted"></i>
+        <div class="flex-grow-1 overflow-hidden">
+          <div class="text-truncate">{{ r.origin }} → {{ r.destination }}</div>
+        </div>
+        <span class="badge {% if r.risk_level == 'low' %}badge-low{% elif r.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}" style="font-size:.62rem;">{{ r.risk_score }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-md-7">
+    <!-- Map -->
+    <div class="card p-2 mb-4">
+      <div id="routeMap"></div>
+    </div>
+
+    <!-- Result -->
+    <div id="routeResult" style="display:none;">
+      <div class="card p-4 mb-3" id="overallRisk">
+        <div class="d-flex align-items-center gap-3">
+          <div id="riskCircle" style="width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <span id="riskScore" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;"></span>
+            <span style="font-size:.6rem;color:var(--muted);">/100</span>
+          </div>
+          <div>
+            <h6 class="fw-bold mb-1" id="routeSummary">Route Summary</h6>
+            <span id="riskPill" class="badge rounded-pill px-3 py-1"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Route Points -->
+      <div class="card p-4 mb-3">
+        <h6 class="fw-bold mb-3">Route Breakdown</h6>
+        <div id="routePoints"></div>
+      </div>
+
+      <!-- Safety Tips -->
+      <div class="card p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-success"></i>Safety Tips for This Route</h6>
+        <ul id="routeTips" class="list-unstyled mb-0"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('routeMap').setView([28.6, 77.2], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap contributors'}).addTo(map);
+let routeMarkers = [];
+
+const colors = {low:'#00C48C', medium:'#F59E0B', high:'#EF4444'};
+const labels  = {low:'✓ LOW RISK', medium:'⚡ MEDIUM RISK', high:'⚠ HIGH RISK'};
+const bgCls   = {low:'badge-low', medium:'badge-med', high:'badge-high'};
+
+function analyzeRoute() {
+  const origin = document.getElementById('originInput').value.trim();
+  const dest   = document.getElementById('destInput').value.trim();
+  if (!origin || !dest) { alert('Please enter both origin and destination.'); return; }
+
+  const spinner = document.getElementById('routeSpinner');
+  const icon    = document.getElementById('routeIcon');
+  spinner.classList.remove('d-none'); icon.classList.add('d-none');
+
+  fetch(`{% url 'dashboard:route_analyze' %}?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}`)
+    .then(r => r.json())
+    .then(data => {
+      spinner.classList.add('d-none'); icon.classList.remove('d-none');
+      if (data.error) { alert(data.error); return; }
+      renderRoute(data);
+    })
+    .catch(() => { spinner.classList.add('d-none'); icon.classList.remove('d-none'); });
+}
+
+function renderRoute(data) {
+  const c = colors[data.overall_level];
+  document.getElementById('riskCircle').style.cssText = `width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:3px solid ${c};background:${c}15;`;
+  document.getElementById('riskScore').style.color = c;
+  document.getElementById('riskScore').textContent  = data.overall_score;
+  document.getElementById('routeSummary').textContent = `Route: ${data.origin.name} → ${data.destination.name}`;
+  const pill = document.getElementById('riskPill');
+  pill.textContent = labels[data.overall_level];
+  pill.className   = `badge rounded-pill px-3 py-1 ${bgCls[data.overall_level]}`;
+
+  // Route points
+  const points = [
+    {label:'Origin', ...data.origin, icon:'🟢'},
+    ...data.intermediate.map(i => ({...i, label:'Via', icon:'🔵'})),
+    {label:'Destination', ...data.destination, icon:'🔴'}
+  ];
+  document.getElementById('routePoints').innerHTML = points.map(p => `
+    <div class="risk-step">
+      <span style="font-size:1.1rem;">${p.icon}</span>
+      <div class="step-dot" style="background:${colors[p.level]};box-shadow:0 0 6px ${colors[p.level]};"></div>
+      <div class="flex-grow-1"><div class="fw-semibold small">${p.name}</div><div class="text-muted" style="font-size:.72rem;">${p.label}</div></div>
+      <span class="fw-bold" style="color:${colors[p.level]};font-family:'Syne',sans-serif;">${p.score}</span>
+    </div>`).join('');
+
+  // Tips
+  document.getElementById('routeTips').innerHTML = data.safety_tips.map(t =>
+    `<li class="mb-2"><i class="bi bi-check-circle-fill me-2" style="color:#00C48C;"></i>${t}</li>`).join('');
+
+  document.getElementById('routeResult').style.display = 'block';
+
+  // Map markers — use real lat/lng returned by route_analyze API
+  routeMarkers.forEach(m => map.removeLayer(m));
+  routeMarkers = [];
+
+  const origCoord = (data.origin.lat && data.origin.lng)           ? [data.origin.lat,      data.origin.lng]      : null;
+  const destCoord = (data.destination.lat && data.destination.lng) ? [data.destination.lat, data.destination.lng] : null;
+
+  if (!origCoord || !destCoord) {
+    // No coordinates available — show a warning in the map
+    map.setView([22.5, 78.9], 5);
+    return;
+  }
+
+  const routeColor = colors[data.overall_level];
+
+  // Place A / B markers
+  [{coord:origCoord, label:data.origin.name, letter:'A', color:'#00C48C'},
+   {coord:destCoord, label:data.destination.name, letter:'B', color:'#EF4444'}
+  ].forEach(p => {
+    const icon = L.divIcon({
+      html: `<div style="width:26px;height:26px;border-radius:50%;background:${p.color};border:3px solid #fff;
+             box-shadow:0 2px 10px ${p.color}88;display:flex;align-items:center;justify-content:center;
+             font-size:.7rem;font-weight:800;color:#fff;">${p.letter}</div>`,
+      className: '', iconSize: [26,26], iconAnchor: [13,13]
+    });
+    const m = L.marker(p.coord, {icon})
+      .bindPopup(`<b style="color:${p.color}">${p.label}</b><br>
+                  <span style="font-size:.78rem;">Risk: ${p.letter==='A'?data.origin.score:data.destination.score}/100</span>`);
+    m.addTo(map);
+    routeMarkers.push(m);
+  });
+
+  // Try OSRM real road route, fallback to dashed straight line
+  fetch(`https://router.project-osrm.org/route/v1/driving/${origCoord[1]},${origCoord[0]};${destCoord[1]},${destCoord[0]}?overview=full&geometries=geojson`)
+    .then(r => r.json())
+    .then(rd => {
+      if (rd.code === 'Ok' && rd.routes && rd.routes[0]) {
+        const coords = rd.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        const line = L.polyline(coords, {
+          color: routeColor, weight: 5, opacity: 0.85,
+          dashArray: data.overall_level === 'high' ? '10,6' : null
+        }).addTo(map);
+        routeMarkers.push(line);
+        map.fitBounds(line.getBounds().pad(0.12));
+      } else { throw new Error('no route'); }
+    })
+    .catch(() => {
+      const line = L.polyline([origCoord, destCoord], {
+        color: routeColor, weight: 4, dashArray: '8,5', opacity: 0.8
+      }).addTo(map);
+      routeMarkers.push(line);
+      map.fitBounds([origCoord, destCoord], {padding: [40, 40]});
+    });
+}
+
+document.getElementById('originInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('destInput').focus(); });
+document.getElementById('destInput').addEventListener('keydown', e => { if(e.key==='Enter') analyzeRoute(); });
+</script>
+{% endblock %}

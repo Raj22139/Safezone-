@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Login — SafeZone AI{% endblock %}
+{% block extra_css %}
+<style>
+  .auth-page { min-height:100vh; display:flex; }
+  .auth-left {
+    flex:1; display:none; position:relative; overflow:hidden;
+    background: linear-gradient(135deg, #0D1321 0%, #1a2744 50%, #0f2560 100%);
+  }
+  @media(min-width:992px){ .auth-left { display:flex; align-items:center; justify-content:center; } }
+  .auth-left-content { position:relative; z-index:2; padding:48px; max-width:440px; }
+  .auth-left-bg {
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse 70% 60% at 30% 40%, rgba(26,86,255,.35) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,196,140,.15) 0%, transparent 50%);
+  }
+  .auth-grid {
+    position:absolute; inset:0; opacity:.15;
+    background-image: linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  .auth-right { width:100%; max-width:480px; display:flex; align-items:center; justify-content:center; padding:40px 32px; }
+  @media(min-width:992px){ .auth-right { padding:48px; } }
+  .auth-card { width:100%; max-width:400px; }
+  .input-group-custom { position:relative; }
+  .input-group-custom .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:.9rem; pointer-events:none; }
+  .input-group-custom input { padding-left:40px; }
+  .divider { display:flex; align-items:center; gap:12px; margin:20px 0; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <!-- Left Panel -->
+  <div class="auth-left">
+    <div class="auth-left-bg"></div>
+    <div class="auth-grid"></div>
+    <div class="auth-left-content animate-fade-up">
+      <div class="d-flex align-items-center gap-3 mb-5">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-shield-fill text-white fs-5"></i>
+        </div>
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#fff;">SafeZone <span style="color:#93ABFF;">AI</span></span>
+      </div>
+      <h2 style="color:#fff;font-weight:800;letter-spacing:-1px;line-height:1.2;" class="mb-3">Stay Safe.<br>Stay Informed.</h2>
+      <p style="color:rgba(255,255,255,.6);line-height:1.75;" class="mb-5">Access real-time crime analysis, risk scores, and safety insights for any area across India.</p>
+      <!-- Feature pills -->
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi bi-check-lg text-white small"></i>
+          </div>
+          <span style="color:rgba(255,255,255,.8);font-size:.88rem;">{{ f }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="auth-right">
+    <div class="auth-card animate-scale-in">
+      <a href="/" class="d-flex align-items-center gap-2 text-decoration-none mb-5" style="font-family:'Syne',sans-serif;font-weight:800;color:var(--text);">
+        <div style="width:32px;height:32px;border-radius:9px;background:var(--primary);display:flex;align-items:center;justify-content:center;"><i class="bi bi-shield-fill text-white small"></i></div>
+        SafeZone <span style="color:var(--primary);">AI</span>
+      </a>
+
+      <h4 class="fw-bold mb-1">Welcome back 👋</h4>
+      <p class="text-muted small mb-4">Sign in to your SafeZone account</p>
+
+      {% if messages %}{% for msg in messages %}<div class="alert border-0 py-2 mb-3 animate-fade-up" style="background:rgba(239,68,68,.08);color:var(--danger);border-radius:10px;font-size:.85rem;"><i class="bi bi-exclamation-circle me-2"></i>{{ msg }}</div>{% endfor %}{% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-muted mb-1">Username</label>
+          <div class="input-group-custom">
+            <i class="bi bi-person input-icon"></i>
+            <input type="text" name="username" class="form-control" placeholder="Your username" required autofocus/>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label small fw-semibold text-muted mb-1">Password</label>
+          <div class="input-group-custom">
+            <i class="bi bi-lock input-icon"></i>
+            <input type="password" name="password" class="form-control" placeholder="Your password" required id="pwdInput"/>
+            <button type="button" onclick="togglePwd()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary-custom w-100 py-3 justify-content-center" style="border-radius:12px;font-size:.95rem;" id="loginBtn">
+          <i class="bi bi-box-arrow-in-right"></i> Sign In
+        </button>
+      </form>
+
+      <div class="divider text-muted small">or</div>
+      <a href="{% url 'dashboard:anonymous_tip' %}" class="btn-outline-custom w-100 py-2 text-center d-block" style="border-radius:12px;font-size:.85rem;text-decoration:none;color:var(--text);">
+        <i class="bi bi-person-lock me-2"></i>Submit Anonymous Tip (No Login)
+      </a>
+
+      <p class="text-center text-muted small mt-4 mb-0">
+        Don't have an account? <a href="{% url 'accounts:register' %}" class="fw-semibold" style="color:var(--primary);text-decoration:none;">Register here →</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block chatbot %}{% endblock %}
+{% block extra_js %}
+<script>
+function togglePwd() {
+  const input = document.getElementById('pwdInput');
+  const icon  = document.getElementById('eyeIcon');
+  if (input.type === 'password') { input.type = 'text';     icon.className = 'bi bi-eye-slash'; }
+  else                           { input.type = 'password'; icon.className = 'bi bi-eye'; }
+}
+document.querySelector('form').addEventListener('submit', () => {
+  const btn = document.getElementById('loginBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+  btn.style.opacity = '.8';
+});
+</script>
+{% endblock %}

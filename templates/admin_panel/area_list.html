@@ -1,0 +1,44 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Area Management{% endblock %}
+{% block anav_areas %}active{% endblock %}
+{% block admin_content %}
+<div class="a-card">
+  <div class="a-card-head">
+    <h6>Areas <span style="color:#6B7299;font-weight:400;">({{ areas.count }})</span></h6>
+    <a href="{% url 'admin_panel:area_add' %}" class="btn btn-sm px-3 fw-semibold" style="background:var(--accent);color:#fff;border:none;"><i class="bi bi-plus me-1"></i>Add Area</a>
+  </div>
+  <form method="get" class="d-flex gap-2 p-3" style="border-bottom:1px solid var(--aborder);">
+    <div class="d-flex align-items-center gap-2 flex-grow-1" style="background:var(--ab2);border:1px solid var(--aborder);border-radius:8px;padding:0 12px;">
+      <i class="bi bi-search" style="color:#6B7299;"></i>
+      <input type="text" name="q" value="{{ q }}" class="form-control border-0 shadow-none bg-transparent" placeholder="Search area or city..." style="color:#E8EAF2;"/>
+    </div>
+    <button type="submit" class="btn btn-sm px-3" style="background:var(--accent);color:#fff;border:none;">Search</button>
+  </form>
+  <div class="table-responsive">
+    <table class="table a-table mb-0">
+      <thead><tr><th>Area</th><th>City</th><th>State</th><th>Pincode</th><th>Risk Score</th><th>Level</th><th>Trend</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for a in areas %}
+        <tr>
+          <td class="fw-semibold" style="color:#E8EAF2;">{{ a.name }}</td>
+          <td style="color:#9BA3BC;">{{ a.city }}</td>
+          <td style="color:#9BA3BC;">{{ a.state|default:"—" }}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:.76rem;color:#6B7299;">{{ a.pincode|default:"—" }}</td>
+          <td><span class="fw-bold {% if a.risk_level == 'low' %}risk-low{% elif a.risk_level == 'medium' %}risk-med{% else %}risk-high{% endif %}" style="font-family:'Syne',sans-serif;font-size:1rem;">{{ a.risk_score }}</span></td>
+          <td><span class="badge rounded-2 {% if a.risk_level == 'low' %}badge-low{% elif a.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}">{{ a.risk_level|title }}</span></td>
+          <td><small style="color:{% if a.trend == 'improving' %}var(--safe){% elif a.trend == 'worsening' %}var(--danger){% else %}var(--warn){% endif %};">
+            {% if a.trend == 'improving' %}↓{% elif a.trend == 'worsening' %}↑{% else %}→{% endif %} {{ a.trend|title }}
+          </small></td>
+          <td><div class="d-flex gap-1">
+            <a href="{% url 'admin_panel:area_edit' a.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(79,110,255,.1);color:var(--accent);border:1px solid rgba(79,110,255,.2);"><i class="bi bi-pencil" style="font-size:.72rem;"></i></a>
+            <a href="{% url 'admin_panel:area_delete' a.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);"><i class="bi bi-trash" style="font-size:.72rem;"></i></a>
+          </div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center py-4" style="color:#6B7299;">No areas found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

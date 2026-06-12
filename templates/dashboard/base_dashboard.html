@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% block extra_css %}
+<style>
+  :root { --sidebar-w:252px; --topbar-h:64px; }
+  body { background:var(--bg); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width:var(--sidebar-w); background:var(--surface);
+    border-right:1px solid var(--border);
+    position:fixed; top:0; left:0; bottom:0; z-index:50;
+    display:flex; flex-direction:column;
+    overflow-y:auto; overflow-x:hidden;
+    transition:transform .3s cubic-bezier(.4,0,.2,1), width .3s;
+    scrollbar-width:none;
+  }
+  .sidebar::-webkit-scrollbar { display:none; }
+  .sidebar-logo {
+    padding:20px 20px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:11px;
+    text-decoration:none;
+    position:sticky; top:0; z-index:2;
+    background:var(--surface);
+  }
+  .logo-shield { width:36px; height:36px; border-radius:10px; background:var(--primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:var(--transition); }
+  .sidebar-logo:hover .logo-shield { transform:rotate(-8deg) scale(1.05); }
+  .logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem; color:var(--text); letter-spacing:-.3px; }
+
+  .nav-section { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:1.8px; color:var(--muted); opacity:.6; padding:12px 16px 4px; margin-top:4px; }
+  .nav-item {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 14px; border-radius:10px; margin:1px 8px;
+    font-size:.865rem; font-weight:500; color:var(--muted);
+    text-decoration:none; transition:var(--transition);
+    border:1.5px solid transparent; position:relative;
+  }
+  .nav-item i { width:18px; text-align:center; font-size:.95rem; transition:var(--transition); flex-shrink:0; }
+  .nav-item:hover { background:var(--primary-light); color:var(--primary); }
+  .nav-item:hover i { transform:scale(1.1); }
+  .nav-item.active {
+    background:var(--primary-light); color:var(--primary);
+    border-color:rgba(26,86,255,.15); font-weight:600;
+  }
+  .nav-item.active::before {
+    content:''; position:absolute; left:-8px; top:50%; transform:translateY(-50%);
+    width:3px; height:20px; background:var(--primary); border-radius:0 3px 3px 0;
+  }
+  .nav-badge { margin-left:auto; font-size:.62rem; font-weight:700; padding:2px 7px; border-radius:100px; }
+  .nb-blue   { background:var(--primary-light); color:var(--primary); }
+  .nb-red    { background:rgba(239,68,68,.12);  color:var(--danger); }
+  .nb-green  { background:rgba(0,196,140,.12);  color:var(--safe); }
+
+  .sidebar-user {
+    margin:10px; padding:12px 14px;
+    background:var(--surface2); border:1px solid var(--border); border-radius:12px;
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    transition:var(--transition);
+  }
+  .sidebar-user:hover { border-color:var(--primary); background:var(--primary-light); }
+  .avatar { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--primary),#6C8FFF); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-size:.75rem; font-weight:800; color:#fff; flex-shrink:0; }
+
+  /* MAIN */
+  .main-area { margin-left:var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; transition:margin-left .3s; }
+
+  /* TOPBAR */
+  .topbar {
+    height:var(--topbar-h); background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 28px; position:sticky; top:0; z-index:40;
+    backdrop-filter:blur(12px);
+  }
+  .topbar-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; color:var(--text); letter-spacing:-.2px; }
+  .icon-btn {
+    width:36px; height:36px; border-radius:9px; border:1.5px solid var(--border);
+    background:none; color:var(--muted); cursor:pointer; transition:var(--transition);
+    display:flex; align-items:center; justify-content:center; font-size:.9rem;
+  }
+  .icon-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-light); }
+
+  /* CONTENT */
+  .content-area { padding:28px 32px; flex:1; }
+
+  /* STAT CARDS */
+  .stat-card {
+    background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius);
+    padding:20px 22px; transition:var(--transition); position:relative; overflow:hidden;
+  }
+  .stat-card::after { content:''; position:absolute; top:0; right:0; width:80px; height:80px; border-radius:50%; opacity:.05; transform:translate(30%,-30%); }
+  .stat-card:hover { transform:translateY(-4px); box-shadow:var(--shadow); border-color:transparent; }
+  .stat-card-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+  .stat-val { font-family:'Syne',sans-serif; font-weight:800; font-size:1.7rem; letter-spacing:-1px; line-height:1; }
+  .stat-lbl { font-size:.78rem; color:var(--muted); margin-top:4px; }
+
+  /* CARDS */
+  .panel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:var(--transition); }
+  .panel:hover { box-shadow:var(--shadow-sm); }
+  .panel-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .panel-title { font-family:'Syne',sans-serif; font-weight:700; font-size:.9rem; color:var(--text); }
+
+  /* TABLES */
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table thead th { background:var(--surface2); font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding:10px 18px; text-align:left; border-bottom:1px solid var(--border); }
+  .data-table tbody tr { border-bottom:1px solid var(--border); transition:background .15s; cursor:pointer; }
+  .data-table tbody tr:last-child { border-bottom:none; }
+  .data-table tbody tr:hover { background:var(--primary-light); }
+  .data-table td { padding:12px 18px; font-size:.84rem; vertical-align:middle; color:var(--text); }
+
+  /* OVERLAY */
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:49; }
+  .sidebar-overlay.show { display:block; }
+  .hamburger { display:none; background:none; border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer; color:var(--muted); transition:var(--transition); }
+  .hamburger:hover { border-color:var(--primary); color:var(--primary); }
+
+  /* SEARCH BAR in topbar */
+  .topbar-search { display:flex; align-items:center; gap:8px; background:var(--surface2); border:1.5px solid var(--border); border-radius:9px; padding:0 12px; max-width:280px; transition:var(--transition); }
+  .topbar-search:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,86,255,.08); }
+  .topbar-search input { flex:1; border:none; outline:none; background:none; font-size:.82rem; color:var(--text); padding:7px 0; }
+  .topbar-search input::placeholder { color:var(--muted); }
+
+  @media(max-width:991px) {
+    .sidebar { transform:translateX(-100%); }
+    .sidebar.mobile-open { transform:translateX(0); box-shadow:var(--shadow-lg); }
+    .main-area { margin-left:0; }
+    .hamburger { display:flex; align-items:center; }
+    .topbar-search { display:none; }
+    .content-area { padding:20px 16px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="mainSidebar">
+  <a href="/" class="sidebar-logo">
+    <div class="logo-shield"><i class="bi bi-shield-fill text-white small"></i></div>
+    <span class="logo-text">SafeZone <span style="color:var(--primary);">AI</span></span>
+  </a>
+
+  <nav class="flex-grow-1 pt-2 pb-3">
+    <div class="nav-section">Main</div>
+    <a class="nav-item {% block nav_dashboard %}{% endblock %}" href="{% url 'dashboard:home' %}">
+      <i class="bi bi-house-fill"></i> Home Screen
+    </a>
+    <a class="nav-item {% block nav_heatmap %}{% endblock %}" href="{% url 'dashboard:heatmap' %}">
+      <i class="bi bi-map-fill"></i> Crime Heatmap
+    </a>
+    <a class="nav-item {% block nav_lb %}{% endblock %}" href="{% url 'dashboard:leaderboard' %}">
+      <i class="bi bi-trophy-fill"></i> Leaderboard
+    </a>
+    <a class="nav-item {% block nav_feed %}{% endblock %}" href="{% url 'dashboard:crime_feed' %}">
+      <i class="bi bi-broadcast-pin"></i> Crime Feed
+      <span class="nav-badge nb-red">Live</span>
+    </a>
+
+    <div class="nav-section">Safety Tools</div>
+    <a class="nav-item {% block nav_live %}{% endblock %}" href="{% url 'dashboard:live_safety' %}">
+      <i class="bi bi-crosshair2"></i> Live Safety
+    </a>
+    <a class="nav-item {% block nav_route %}{% endblock %}" href="{% url 'dashboard:route' %}">
+      <i class="bi bi-sign-turn-right-fill"></i> Route Checker
+    </a>
+    <a class="nav-item {% block nav_compare %}{% endblock %}" href="{% url 'dashboard:compare' %}">
+      <i class="bi bi-bar-chart-steps"></i> Compare Areas
+    </a>
+    <a class="nav-item {% block nav_journey %}{% endblock %}" href="{% url 'dashboard:journey' %}">
+      <i class="bi bi-geo-alt-fill"></i> Journey Tracker
+    </a>
+    <a class="nav-item {% block nav_sos %}{% endblock %}" href="{% url 'dashboard:sos' %}" style="color:var(--danger)!important;">
+      <i class="bi bi-exclamation-octagon-fill" style="color:var(--danger)!important;"></i>
+      <span style="color:var(--danger)!important;">SOS Emergency</span>
+    </a>
+
+    <div class="nav-section">My Data</div>
+    <a class="nav-item {% block nav_history %}{% endblock %}" href="{% url 'dashboard:history' %}">
+      <i class="bi bi-clock-history"></i> Search History
+    </a>
+    <a class="nav-item {% block nav_saved %}{% endblock %}" href="{% url 'dashboard:saved' %}">
+      <i class="bi bi-bookmark-fill"></i> Saved Areas
+    </a>
+    <a class="nav-item {% block nav_alerts %}{% endblock %}" href="{% url 'dashboard:alerts' %}">
+      <i class="bi bi-bell-fill"></i> Email Alerts
+    </a>
+    <a class="nav-item {% block nav_cal %}{% endblock %}" href="{% url 'dashboard:calendar' %}">
+      <i class="bi bi-calendar-week-fill"></i> Crime Calendar
+    </a>
+
+    <div class="nav-section">Community</div>
+    <a class="nav-item {% block nav_report %}{% endblock %}" href="{% url 'dashboard:report_crime' %}">
+      <i class="bi bi-flag-fill"></i> Report Crime
+    </a>
+    <a class="nav-item {% block nav_tip %}{% endblock %}" href="{% url 'dashboard:anonymous_tip' %}">
+      <i class="bi bi-person-lock"></i> Anonymous Tip
+    </a>
+
+    <div class="nav-section">Account</div>
+    <a class="nav-item" href="{% url 'accounts:profile' %}"><i class="bi bi-person-fill"></i> Profile</a>
+    <a class="nav-item" href="{% url 'accounts:logout' %}" style="color:var(--danger)!important;"><i class="bi bi-box-arrow-right" style="color:var(--danger)!important;"></i> Logout</a>
+  </nav>
+
+  <a href="{% url 'accounts:profile' %}" class="sidebar-user text-decoration-none">
+    <div class="avatar">{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}</div>
+    <div class="flex-grow-1 overflow-hidden">
+      <div class="fw-semibold small text-truncate" style="color:var(--text);">{{ request.user.get_full_name|default:request.user.username }}</div>
+      <div style="font-size:.68rem;color:var(--muted);">Free Account</div>
+    </div>
+    <i class="bi bi-chevron-right" style="color:var(--muted);font-size:.75rem;"></i>
+  </a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main-area" id="mainArea">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="hamburger" onclick="openSidebar()"><i class="bi bi-list fs-5"></i></button>
+      <div>
+        <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div style="font-size:.72rem;color:var(--muted);">{% block page_subtitle %}Welcome back, {{ request.user.first_name|default:request.user.username }}! 👋{% endblock %}</div>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <!-- Search -->
+      <div class="topbar-search d-none d-lg-flex">
+        <i class="bi bi-search" style="color:var(--muted);font-size:.8rem;"></i>
+        <input type="text" placeholder="Quick search area..." id="quickSearch" onkeydown="if(event.key==='Enter'){window.location='/dashboard/?q='+this.value}"/>
+      </div>
+
+      <!-- Language Toggle -->
+      <div class="dropdown">
+        <button class="icon-btn dropdown-toggle" data-bs-toggle="dropdown" title="Language">
+          {% if request.COOKIES.safezone_language == 'hi' %}🇮🇳{% else %}🇬🇧{% endif %}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" style="background:var(--surface);border:1px solid var(--border);min-width:120px;border-radius:12px;padding:8px;">
+          <li><form method="post" action="{% url 'dashboard:set_language' %}">{% csrf_token %}<input type="hidden" name="language" value="en"><button type="submit" class="dropdown-item rounded-2 small" style="color:var(--text);">🇬🇧 English</button></form></li>
+          <li><form method="post" action="{% url 'dashboard:set_language' %}">{% csrf_token %}<input type="hidden" name="language" value="hi"><button type="submit" class="dropdown-item rounded-2 small" style="color:var(--text);">🇮🇳 हिंदी</button></form></li>
+        </ul>
+      </div>
+
+      <!-- Theme Toggle -->
+      <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
+        <i class="bi bi-moon-fill" id="themeIcon"></i>
+      </button>
+
+      <!-- Notifications -->
+      <button class="icon-btn position-relative" title="Notifications">
+        <i class="bi bi-bell-fill"></i>
+        <span style="position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--surface);"></span>
+      </button>
+
+      <!-- SOS Quick -->
+      <a href="{% url 'dashboard:sos' %}" class="icon-btn" style="background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--danger);" title="SOS Emergency">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+      </a>
+
+      <!-- Avatar -->
+      <a href="{% url 'accounts:profile' %}" class="avatar text-decoration-none" style="cursor:pointer;width:36px;height:36px;font-size:.72rem;border-radius:10px;">
+        {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+      </a>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="content-area">
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="d-flex align-items-center gap-3 p-3 mb-3 animate-fade-up" style="background:{% if msg.tags == 'success' %}rgba(0,196,140,.08){% elif msg.tags == 'error' %}rgba(239,68,68,.08){% else %}rgba(26,86,255,.08){% endif %};border:1px solid {% if msg.tags == 'success' %}rgba(0,196,140,.2){% elif msg.tags == 'error' %}rgba(239,68,68,.2){% else %}rgba(26,86,255,.2){% endif %};border-radius:12px;">
+      <i class="bi bi-{% if msg.tags == 'success' %}check-circle-fill{% elif msg.tags == 'error' %}x-circle-fill{% else %}info-circle-fill{% endif %}" style="color:{% if msg.tags == 'success' %}var(--safe){% elif msg.tags == 'error' %}var(--danger){% else %}var(--primary){% endif %};font-size:1.1rem;"></i>
+      <span style="font-size:.875rem;flex:1;color:var(--text);">{{ msg }}</span>
+      <button onclick="this.closest('.d-flex').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;"><i class="bi bi-x"></i></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block dashboard_content %}{% endblock %}
+  </div>
+</div>
+
+{% include 'chatbot/widget.html' with chat_context="dashboard" %}
+{% endblock %}
+
+{% block chatbot %}{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+// Sidebar
+function openSidebar() {
+  document.getElementById('mainSidebar').classList.add('mobile-open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.getElementById('mainSidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Theme icon sync
+document.addEventListener('DOMContentLoaded', () => {
+  const t = localStorage.getItem('sz-theme') || 'light';
+  const icon = document.getElementById('themeIcon');
+  if (icon) icon.className = t === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+});
+
+// PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
+function installPWA() {
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+}
+
+// Quick search
+document.getElementById('quickSearch')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    window.location.href = '{% url "dashboard:home" %}';
+    sessionStorage.setItem('quickSearchQuery', e.target.value.trim());
+  }
+});
+</script>
+{% endblock %}

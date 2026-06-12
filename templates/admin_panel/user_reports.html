@@ -1,0 +1,35 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}User Reports{% endblock %}
+{% block admin_content %}
+<div class="a-card">
+  <div class="a-card-head"><h6>Community Crime Reports <span style="color:#6B7299;font-weight:400;">({{ reports.count }})</span></h6></div>
+  <div class="table-responsive">
+    <table class="table a-table mb-0">
+      <thead><tr><th>ID</th><th>Location</th><th>Type</th><th>Severity</th><th>Date</th><th>Reported By</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td class="td-mono" style="font-size:.74rem;color:#6B7299;">#{{ r.pk|stringformat:"04d" }}</td>
+          <td><div style="font-size:.84rem;font-weight:600;color:#E8EAF2;">{{ r.location_text|truncatechars:30 }}</div><div style="font-size:.72rem;color:#6B7299;">{{ r.area|default:"Unknown" }}</div></td>
+          <td><small style="color:#9BA3BC;">{{ r.get_crime_type_display }}</small></td>
+          <td><span style="font-weight:700;color:{% if r.severity <= 3 %}var(--safe){% elif r.severity <= 6 %}var(--warn){% else %}var(--danger){% endif %};">{{ r.severity }}/10</span></td>
+          <td style="font-size:.76rem;color:#6B7299;">{{ r.incident_date|date:"M d, Y" }}</td>
+          <td style="font-size:.8rem;color:#9BA3BC;">{{ r.reported_by|default:"Anonymous" }}</td>
+          <td><span class="badge rounded-pill" style="font-size:.65rem;{% if r.status == 'approved' %}background:rgba(34,211,164,.1);color:var(--safe);{% elif r.status == 'rejected' %}background:rgba(255,75,110,.1);color:var(--danger);{% else %}background:rgba(245,166,35,.1);color:var(--warn);{% endif %}">{{ r.status|title }}</span></td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if r.status == 'pending' %}
+              <button class="btn btn-sm rounded-2 px-2 py-1" style="background:rgba(34,211,164,.1);color:var(--safe);border:1px solid rgba(34,211,164,.2);font-size:.72rem;" onclick="this.closest('tr').style.opacity='.4'">✓</button>
+              <button class="btn btn-sm rounded-2 px-2 py-1" style="background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);font-size:.72rem;" onclick="this.closest('tr').style.opacity='.4'">✗</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center py-4" style="color:#6B7299;">No user reports yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

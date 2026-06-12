@@ -1,0 +1,90 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}User Management{% endblock %}
+{% block anav_users %}active{% endblock %}
+{% block admin_content %}
+<div class="a-card">
+  <div class="a-card-head">
+    <h6>Users <span style="color:#6B7299;font-weight:400;">({{ users.count }})</span></h6>
+  </div>
+  <form method="get" class="d-flex gap-2 p-3" style="border-bottom:1px solid var(--aborder);">
+    <div class="d-flex align-items-center gap-2 flex-grow-1" style="background:var(--ab2);border:1px solid var(--aborder);border-radius:8px;padding:0 12px;">
+      <i class="bi bi-search" style="color:#6B7299;"></i>
+      <input type="text" name="q" value="{{ q }}" class="form-control border-0 shadow-none bg-transparent" placeholder="Search name, email..." style="color:#E8EAF2;"/>
+    </div>
+    <button type="submit" class="btn btn-sm px-3" style="background:var(--accent);color:#fff;border:none;">Search</button>
+  </form>
+  <div class="table-responsive">
+    <table class="table a-table mb-0">
+      <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#6C8FFF);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:#fff;flex-shrink:0;">
+                {{ u.first_name|first|upper }}{{ u.last_name|first|upper }}
+              </div>
+              <div>
+                <div class="small fw-semibold" style="color:#E8EAF2;">{{ u.get_full_name|default:u.username }}</div>
+                <div style="font-size:.72rem;color:#6B7299;">@{{ u.username }}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:.8rem;color:#9BA3BC;">{{ u.email }}</td>
+          <td>
+            <span class="badge rounded-pill" style="font-size:.65rem;{% if u.is_staff %}background:rgba(255,75,110,.12);color:var(--danger);{% else %}background:rgba(79,110,255,.12);color:var(--accent);{% endif %}">
+              {% if u.is_staff %}Admin{% else %}User{% endif %}
+            </span>
+          </td>
+          <td style="font-size:.76rem;color:#6B7299;">{{ u.date_joined|date:"M d, Y" }}</td>
+          <td>
+            <span class="badge rounded-pill" id="status-{{ u.pk }}" style="font-size:.65rem;{% if u.is_active %}background:rgba(34,211,164,.1);color:var(--safe);{% else %}background:rgba(255,75,110,.1);color:var(--danger);{% endif %}">
+              {% if u.is_active %}Active{% else %}Banned{% endif %}
+            </span>
+          </td>
+          <td>
+            {% if not u.is_staff %}
+            <button onclick="toggleUser({{ u.pk }})" class="btn btn-sm rounded-2 p-1 px-2" id="toggle-btn-{{ u.pk }}"
+              style="{% if u.is_active %}background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);{% else %}background:rgba(34,211,164,.1);color:var(--safe);border:1px solid rgba(34,211,164,.2);{% endif %}font-size:.72rem;">
+              {% if u.is_active %}<i class="bi bi-slash-circle"></i> Ban{% else %}<i class="bi bi-check-circle"></i> Unban{% endif %}
+            </button>
+            {% else %}
+            <span style="color:#3E4463;font-size:.76rem;">Protected</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center py-4" style="color:#6B7299;">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleUser(pk) {
+  fetch(`/admin-panel/users/${pk}/toggle-active/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    const badge = document.getElementById(`status-${pk}`);
+    const btn   = document.getElementById(`toggle-btn-${pk}`);
+    if (data.is_active) {
+      badge.style.cssText = 'font-size:.65rem;background:rgba(34,211,164,.1);color:var(--safe);';
+      badge.textContent   = 'Active';
+      btn.style.cssText   = 'background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);font-size:.72rem;';
+      btn.innerHTML       = '<i class="bi bi-slash-circle"></i> Ban';
+    } else {
+      badge.style.cssText = 'font-size:.65rem;background:rgba(255,75,110,.1);color:var(--danger);';
+      badge.textContent   = 'Banned';
+      btn.style.cssText   = 'background:rgba(34,211,164,.1);color:var(--safe);border:1px solid rgba(34,211,164,.2);font-size:.72rem;';
+      btn.innerHTML       = '<i class="bi bi-check-circle"></i> Unban';
+    }
+  });
+}
+</script>
+{% endblock %}

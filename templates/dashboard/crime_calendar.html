@@ -1,0 +1,97 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Crime Calendar{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<style>
+  .cal-grid{display:grid;grid-template-columns:repeat(53,1fr);gap:2px;overflow-x:auto;}
+  .cal-cell{width:12px;height:12px;border-radius:2px;background:var(--surface2);cursor:pointer;transition:transform .1s;}
+  .cal-cell:hover{transform:scale(1.3);}
+  .cal-cell.l1{background:rgba(26,86,255,.15);}
+  .cal-cell.l2{background:rgba(26,86,255,.3);}
+  .cal-cell.l3{background:rgba(26,86,255,.55);}
+  .cal-cell.l4{background:rgba(26,86,255,.8);}
+  .cal-cell.l5{background:#1A56FF;}
+  .month-label{font-size:.65rem;color:var(--muted);text-align:left;}
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="card p-4 mb-4">
+  <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-calendar3 text-accent fs-5"></i>
+      <h6 class="fw-bold mb-0">Crime Heatmap Calendar</h6>
+    </div>
+    <div class="d-flex gap-2 ms-auto flex-wrap">
+      <select id="calArea" class="form-select" style="width:auto;" onchange="loadCalendar()">
+        <option value="">All Areas</option>
+        {% for area in areas %}<option value="{{ area.id }}">{{ area.name }}</option>{% endfor %}
+      </select>
+      <select id="calYear" class="form-select" style="width:auto;" onchange="loadCalendar()">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+      </select>
+    </div>
+  </div>
+  <div id="calContainer" class="mb-3"></div>
+  <div class="d-flex align-items-center gap-2">
+    <span style="font-size:.72rem;color:var(--muted);">Less</span>
+    <div class="cal-cell {{ cls }}" style="flex-shrink:0;"></div>
+
+    <div class="cal-cell" style="flex-shrink:0;"></div>
+    <div class="cal-cell l2" style="flex-shrink:0;"></div>
+    <div class="cal-cell l4" style="flex-shrink:0;"></div>
+    <div class="cal-cell l5" style="flex-shrink:0;"></div>
+    <span style="font-size:.72rem;color:var(--muted);">More</span>
+    <span id="calStats" class="ms-auto text-muted" style="font-size:.78rem;"></span>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loadCalendar(){
+  const areaId = document.getElementById('calArea').value;
+  const year   = document.getElementById('calYear').value;
+  fetch(`{% url 'dashboard:calendar_data' %}?area_id=${areaId}&year=${year}`)
+    .then(r=>r.json())
+    .then(data=>renderCalendar(data));
+}
+
+function renderCalendar(data){
+  const container = document.getElementById('calContainer');
+  const max = data.max_count || 1;
+  const cal = data.cal_data;
+
+  // Build 52-week grid
+  const year = data.year;
+  const startDate = new Date(year, 0, 1);
+  // Adjust to Monday start
+  while(startDate.getDay() !== 1) startDate.setDate(startDate.getDate()-1);
+
+  let html = '<div class="cal-grid">';
+  const tooltip = (d,c) => c > 0 ? `title="${d}: ${c} incident${c>1?'s':''}"` : `title="${d}: No incidents"`;
+
+  for(let w=0; w<53; w++){
+    html += '<div style="display:flex;flex-direction:column;gap:2px;">';
+    for(let d=0; d<7; d++){
+      const curr = new Date(startDate);
+      curr.setDate(startDate.getDate() + w*7 + d);
+      if(curr.getFullYear() != year){ html += '<div class="cal-cell" style="opacity:0;"></div>'; continue; }
+      const key = curr.toISOString().split('T')[0];
+      const cnt = cal[key] || 0;
+      let cls = 'l0';
+      if(cnt > 0) cls = cnt<=1?'l1':cnt<=3?'l2':cnt<=6?'l3':cnt<=10?'l4':'l5';
+      html += `<div class="cal-cell ${cls}" ${tooltip(key,cnt)}></div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  document.getElementById('calStats').textContent = `${data.total} incidents across ${data.days_with_crime} days`;
+}
+
+loadCalendar();
+</script>
+{% endblock %}

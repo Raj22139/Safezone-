@@ -1,0 +1,33 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}My Crime Reports{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h6 class="fw-bold mb-0">My Submitted Reports <span class="text-muted">({{ reports.count }})</span></h6>
+  <a href="{% url 'dashboard:report_crime' %}" class="btn btn-accent btn-sm px-3"><i class="bi bi-plus me-1"></i>New Report</a>
+</div>
+<div class="card">
+  {% for r in reports %}
+  <div class="d-flex align-items-start gap-3 p-4 border-bottom">
+    <div class="icon-box mt-1" style="background:{% if r.status == 'approved' %}rgba(0,196,140,.1){% elif r.status == 'rejected' %}rgba(239,68,68,.1){% else %}rgba(245,158,11,.1){% endif %};width:38px;height:38px;border-radius:9px;flex-shrink:0;">
+      <i class="bi bi-{% if r.status == 'approved' %}check-circle{% elif r.status == 'rejected' %}x-circle{% else %}clock{% endif %} small" style="color:{% if r.status == 'approved' %}var(--safe){% elif r.status == 'rejected' %}var(--danger){% else %}var(--warn){% endif %};"></i>
+    </div>
+    <div class="flex-grow-1">
+      <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+        <span class="fw-semibold small">{{ r.get_crime_type_display }} — {{ r.location_text }}</span>
+        <span class="badge rounded-pill {% if r.status == 'approved' %}badge-low{% elif r.status == 'rejected' %}badge-high{% else %}badge-med{% endif %}" style="font-size:.65rem;">{{ r.status|title }}</span>
+      </div>
+      <p class="text-muted mb-1" style="font-size:.82rem;">{{ r.description|truncatechars:120 }}</p>
+      <small class="text-muted">{{ r.incident_date|date:"M d, Y" }} &nbsp;·&nbsp; Severity: {{ r.severity }}/10</small>
+    </div>
+  </div>
+  {% empty %}
+  <div class="p-5 text-center text-muted">
+    <i class="bi bi-file-earmark-text fs-1 d-block mb-3"></i>
+    <h6>No Reports Yet</h6>
+    <p>Help your community by reporting crime incidents.</p>
+    <a href="{% url 'dashboard:report_crime' %}" class="btn btn-accent btn-sm px-4">Report a Crime</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

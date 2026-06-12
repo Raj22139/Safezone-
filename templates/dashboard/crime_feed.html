@@ -1,0 +1,93 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Live Crime Feed{% endblock %}
+{% block nav_feed %}active{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<style>
+  .feed-item { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:12px; transition:all .2s; animation:feedIn .4s ease both; }
+  .feed-item:hover { border-color:var(--accent); transform:translateX(4px); }
+  @keyframes feedIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+  .feed-badge { font-size:.65rem; font-weight:700; padding:3px 9px; border-radius:100px; }
+  .user-report-tag { background:rgba(139,92,246,.1); color:#8B5CF6; font-size:.65rem; padding:2px 7px; border-radius:4px; }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:#00C48C; display:inline-block; margin-right:6px; animation:pulse 2s infinite; }
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
+  .filter-bar { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:20px; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="filter-bar d-flex align-items-center gap-3 flex-wrap">
+  <div class="d-flex align-items-center gap-2">
+    <span class="live-dot"></span>
+    <h6 class="fw-bold mb-0">Live Crime Feed</h6>
+  </div>
+  <select id="areaFilter" class="form-select" style="width:auto;" onchange="loadFeed()">
+    <option value="">All Areas</option>
+    {% for area in areas %}<option value="{{ area.id }}">{{ area.name }}, {{ area.city }}</option>{% endfor %}
+  </select>
+  <select id="levelFilter" class="form-select" style="width:auto;" onchange="loadFeed()">
+    <option value="">All Risk Levels</option>
+    <option value="low">Low Risk</option>
+    <option value="medium">Medium Risk</option>
+    <option value="high">High Risk</option>
+  </select>
+  <button class="btn btn-sm ms-auto" style="background:rgba(26,86,255,.08);color:var(--accent);border:1px solid rgba(26,86,255,.2);" onclick="loadFeed()">
+    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+  </button>
+  <a href="{% url 'dashboard:report_crime' %}" class="btn btn-accent btn-sm px-3">
+    <i class="bi bi-plus-circle me-1"></i>Report Crime
+  </a>
+</div>
+
+<div id="feedContainer"><div class="text-center py-5 text-muted"><div class="spinner-border text-accent mb-3"></div><div>Loading crime feed...</div></div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const colors  = {low:'#00C48C', medium:'#F59E0B', high:'#EF4444'};
+const bgCls   = {low:'badge-low', medium:'badge-med', high:'badge-high'};
+const sevColor = s => s <= 3 ? '#00C48C' : s <= 6 ? '#F59E0B' : '#EF4444';
+
+function loadFeed() {
+  const area  = document.getElementById('areaFilter').value;
+  const level = document.getElementById('levelFilter').value;
+  document.getElementById('feedContainer').innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border text-accent mb-3"></div><div>Loading...</div></div>';
+
+  fetch(`{% url 'dashboard:crime_feed_data' %}?area_id=${area}&level=${level}&limit=25`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.feed.length) {
+        document.getElementById('feedContainer').innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>No crime records found.</div>';
+        return;
+      }
+      document.getElementById('feedContainer').innerHTML = data.feed.map((item,i) => `
+        <div class="feed-item" style="animation-delay:${i*0.04}s">
+          <div class="d-flex align-items-start justify-content-between gap-3">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                <span class="fw-bold small" style="color:${colors[item.risk_level]}">📍 ${item.area}</span>
+                <span class="feed-badge ${bgCls[item.risk_level]}">${item.risk_level.toUpperCase()}</span>
+                ${item.type === 'user_report' ? '<span class="user-report-tag">👤 User Report</span>' : ''}
+              </div>
+              <div class="fw-semibold small mb-1">${item.crime_type}</div>
+              <p class="text-muted mb-2" style="font-size:.82rem;">${item.description}</p>
+              <div class="d-flex align-items-center gap-3">
+                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${item.date}</small>
+                <small style="color:${sevColor(item.severity)};font-weight:600;">Severity: ${item.severity}/10</small>
+                ${item.reporter ? `<small class="text-muted">By: ${item.reporter}</small>` : ''}
+              </div>
+            </div>
+            <div class="text-center" style="min-width:52px;flex-shrink:0;">
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:${colors[item.risk_level]};line-height:1;">${item.risk_score}</div>
+              <div style="font-size:.62rem;color:var(--muted);">score</div>
+              ${item.area_id ? `<a href="/dashboard/area/${item.area_id}/" class="btn btn-sm mt-1 p-1 px-2" style="font-size:.65rem;background:rgba(26,86,255,.08);color:var(--accent);border:1px solid rgba(26,86,255,.2);">View</a>` : ''}
+            </div>
+          </div>
+        </div>`).join('');
+    });
+}
+loadFeed();
+// Auto-refresh every 60 seconds
+setInterval(loadFeed, 60000);
+</script>
+{% endblock %}

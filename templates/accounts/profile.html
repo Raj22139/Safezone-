@@ -1,0 +1,54 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block dashboard_content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card p-4">
+      <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#1A56FF,#6C8FFF);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#fff;flex-shrink:0;">
+          {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">{{ request.user.get_full_name|default:request.user.username }}</h5>
+          <small class="text-muted">{{ request.user.email }}</small>
+        </div>
+      </div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">First Name</label>
+            <input type="text" name="first_name" class="form-control" value="{{ request.user.first_name }}"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Last Name</label>
+            <input type="text" name="last_name" class="form-control" value="{{ request.user.last_name }}"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ request.user.email }}"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">Phone</label>
+            <input type="text" name="phone" class="form-control" value="{{ profile.phone|default:'' }}" placeholder="+91 9999999999"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-muted">City</label>
+            <input type="text" name="city" class="form-control" value="{{ profile.city|default:'' }}" placeholder="Your city"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted">Bio</label>
+            <textarea name="bio" class="form-control" rows="2" placeholder="Tell us about yourself...">{{ profile.bio|default:'' }}</textarea>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-accent px-4 fw-semibold">
+              <i class="bi bi-check-lg me-2"></i>Update Profile
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'admin_panel/base_admin.html' %}
+{% block page_crumb %}Crime Records{% endblock %}
+{% block anav_crimes %}active{% endblock %}
+
+{% block admin_content %}
+<div class="a-card">
+  <div class="a-card-head">
+    <h6>Crime Records <span style="color:#6B7299;font-weight:400;">({{ records.count }})</span></h6>
+    <a href="{% url 'admin_panel:crime_add' %}" class="btn btn-sm px-3 fw-semibold" style="background:var(--accent);color:#fff;border:none;">
+      <i class="bi bi-plus me-1"></i>Add Record
+    </a>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="d-flex gap-2 flex-wrap p-3" style="border-bottom:1px solid var(--aborder);">
+    <div class="d-flex align-items-center gap-2 flex-grow-1" style="background:var(--ab2);border:1px solid var(--aborder);border-radius:8px;padding:0 12px;">
+      <i class="bi bi-search" style="color:#6B7299;"></i>
+      <input type="text" name="q" value="{{ q }}" class="form-control border-0 shadow-none bg-transparent" placeholder="Search area, type..." style="color:#E8EAF2;"/>
+    </div>
+    <select name="risk" class="form-select" style="width:auto;">
+      <option value="">All Risk Levels</option>
+      <option value="low" {% if risk_filter == 'low' %}selected{% endif %}>Low</option>
+      <option value="medium" {% if risk_filter == 'medium' %}selected{% endif %}>Medium</option>
+      <option value="high" {% if risk_filter == 'high' %}selected{% endif %}>High</option>
+    </select>
+    <select name="type" class="form-select" style="width:auto;">
+      <option value="">All Types</option>
+      {% for val, label in crime_types %}
+      <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm px-3" style="background:var(--accent);color:#fff;border:none;">Filter</button>
+    <a href="{% url 'admin_panel:crime_list' %}" class="btn btn-sm px-3" style="background:var(--ab2);color:#9BA3BC;border:1px solid var(--aborder);">Clear</a>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table a-table mb-0">
+      <thead>
+        <tr>
+          <th>#</th><th>Area / City</th><th>Crime Type</th><th>Severity</th>
+          <th>Risk Level</th><th>Score</th><th>Date</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td style="color:#6B7299;font-family:'JetBrains Mono',monospace;font-size:.76rem;">CR-{{ r.pk|stringformat:"03d" }}</td>
+          <td>
+            <div class="fw-semibold" style="color:#E8EAF2;">{{ r.area.name }}</div>
+            <div style="font-size:.74rem;color:#6B7299;">{{ r.area.city }}</div>
+          </td>
+          <td><small style="color:#9BA3BC;">{{ r.get_crime_type_display }}</small></td>
+          <td>
+            <div class="d-flex gap-1">
+              {% for i in "1234567890"|make_list %}
+              <div style="width:5px;height:14px;border-radius:2px;
+                background:{% if forloop.counter <= r.severity %}{% if r.severity <= 3 %}var(--safe){% elif r.severity <= 6 %}var(--warn){% else %}var(--danger){% endif %}{% else %}var(--ab2){% endif %};"></div>
+              {% endfor %}
+            </div>
+          </td>
+          <td>
+            <span class="badge rounded-2 {% if r.area.risk_level == 'low' %}badge-low{% elif r.area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}">
+              {{ r.area.risk_level|title }}
+            </span>
+          </td>
+          <td><span class="fw-bold {% if r.area.risk_level == 'low' %}risk-low{% elif r.area.risk_level == 'medium' %}risk-med{% else %}risk-high{% endif %}" style="font-family:'Syne',sans-serif;">{{ r.area.risk_score }}</span></td>
+          <td style="font-size:.76rem;color:#6B7299;">{{ r.incident_date|date:"M d, Y" }}</td>
+          <td>
+            <span class="badge rounded-pill" style="font-size:.65rem;
+              {% if r.status == 'approved' %}background:rgba(34,211,164,.1);color:var(--safe);
+              {% elif r.status == 'pending' %}background:rgba(245,166,35,.1);color:var(--warn);
+              {% else %}background:rgba(255,75,110,.1);color:var(--danger);{% endif %}">
+              {{ r.status|title }}
+            </span>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{% url 'admin_panel:crime_edit' r.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(79,110,255,.1);color:var(--accent);border:1px solid rgba(79,110,255,.2);"><i class="bi bi-pencil" style="font-size:.72rem;"></i></a>
+              <a href="{% url 'admin_panel:crime_delete' r.pk %}" class="btn btn-sm rounded-2 p-1 px-2" style="background:rgba(255,75,110,.1);color:var(--danger);border:1px solid rgba(255,75,110,.2);"><i class="bi bi-trash" style="font-size:.72rem;"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center py-5" style="color:#6B7299;">
+          <i class="bi bi-file-earmark-text d-block fs-2 mb-2"></i>No records found.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

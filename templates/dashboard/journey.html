@@ -1,0 +1,101 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Safety Journey Tracker{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card p-4 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="icon-box" style="background:rgba(26,86,255,.08);"><i class="bi bi-geo-alt-fill text-accent fs-5"></i></div>
+        <div><h6 class="fw-bold mb-0">Start New Journey</h6><small class="text-muted">Track your trip safety in real-time</small></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold text-muted">Origin</label>
+        <input type="text" id="journeyOrigin" class="form-control" placeholder="Where are you starting from?"/>
+      </div>
+      <div class="mb-4">
+        <label class="form-label small fw-semibold text-muted">Destination</label>
+        <input type="text" id="journeyDest" class="form-control" placeholder="Where are you going?"/>
+      </div>
+      <button class="btn btn-accent w-100 fw-semibold py-2" onclick="startJourney()">
+        <i class="bi bi-play-circle me-2"></i>Start Journey
+      </button>
+    </div>
+
+    <!-- Active Journey -->
+    <div id="activeJourneyCard" style="display:none;" class="card p-4">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <span class="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--safe);display:inline-block;animation:pulse 1.5s infinite;"></span>
+        <h6 class="fw-bold mb-0" style="color:var(--safe);">Journey Active</h6>
+      </div>
+      <div id="journeyInfo" class="mb-3"></div>
+      <button class="btn btn-danger w-100 fw-semibold" onclick="endJourney()">
+        <i class="bi bi-stop-circle me-2"></i>End Journey Safely ✓
+      </button>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card">
+      <div class="p-3 border-bottom"><h6 class="fw-bold mb-0">Journey History</h6></div>
+      {% for j in journeys %}
+      <div class="d-flex align-items-center gap-3 p-3 border-bottom">
+        <div class="icon-box" style="background:{% if j.status == 'completed' %}rgba(0,196,140,.1){% elif j.status == 'active' %}rgba(26,86,255,.1){% else %}rgba(107,117,148,.1){% endif %};width:36px;height:36px;border-radius:9px;flex-shrink:0;">
+          <i class="bi bi-{% if j.status == 'completed' %}check-circle{% elif j.status == 'active' %}play-circle{% else %}x-circle{% endif %} small" style="color:{% if j.status == 'completed' %}var(--safe){% elif j.status == 'active' %}var(--accent){% else %}var(--muted){% endif %};"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small">{{ j.origin }} → {{ j.destination }}</div>
+          <div class="text-muted" style="font-size:.72rem;">{{ j.started_at|date:"M d, Y H:i" }}</div>
+        </div>
+        <span class="badge {% if j.status == 'completed' %}badge-low{% elif j.status == 'active' %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size:.65rem;">{{ j.status|title }}</span>
+      </div>
+      {% empty %}
+      <div class="p-5 text-center text-muted"><i class="bi bi-geo fs-2 d-block mb-2"></i>No journeys yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let activeJourneyId = null;
+
+function startJourney(){
+  const origin = document.getElementById('journeyOrigin').value.trim();
+  const dest   = document.getElementById('journeyDest').value.trim();
+  if(!origin || !dest){alert('Please enter origin and destination.');return;}
+  fetch('{% url "dashboard:journey_start" %}',{
+    method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+    body:JSON.stringify({origin,destination:dest})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.error){alert(data.error);return;}
+    activeJourneyId = data.journey_id;
+    const c = {low:'#00C48C',medium:'#F59E0B',high:'#EF4444'};
+    document.getElementById('journeyInfo').innerHTML=`
+      <div class="d-flex gap-2 mb-2 flex-wrap">
+        <span class="badge" style="background:${c[data.origin.level]}22;color:${c[data.origin.level]};">🟢 ${data.origin.name} (${data.origin.score})</span>
+        <span style="color:var(--muted);">→</span>
+        <span class="badge" style="background:${c[data.destination.level]}22;color:${c[data.destination.level]};">🔴 ${data.destination.name} (${data.destination.score})</span>
+      </div>
+      <div class="small text-muted mb-2">Overall Risk: <b style="color:${c[data.overall_level]};">${data.overall_score}/100</b></div>
+      <ul class="list-unstyled small mb-0">${data.tips.map(t=>`<li class="mb-1"><i class="bi bi-shield-check me-1" style="color:var(--safe);"></i>${t}</li>`).join('')}</ul>`;
+    document.getElementById('activeJourneyCard').style.display='block';
+    location.reload();
+  });
+}
+
+function endJourney(){
+  if(!activeJourneyId)return;
+  fetch(`/dashboard/journey/end/${activeJourneyId}/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+  .then(r=>r.json())
+  .then(data=>{
+    alert(`✅ Journey completed! Duration: ${data.duration_min} minutes. Stay safe!`);
+    document.getElementById('activeJourneyCard').style.display='none';
+    location.reload();
+  });
+}
+</script>
+{% endblock %}

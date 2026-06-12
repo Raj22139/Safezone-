@@ -1,0 +1,341 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}{{ area.name }} — Safety Report{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .star-rating { display:flex; gap:4px; }
+  .star { font-size:1.4rem; cursor:pointer; color:#DDE2EF; transition:color .15s; }
+  .star.active,.star:hover,.star.hover { color:#F59E0B; }
+  .review-card { background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .trend-chart-wrap { position:relative; height:220px; }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4">
+
+  <!-- LEFT: Risk Score -->
+  <div class="col-md-4">
+    <div class="card p-4 text-center mb-3">
+      <div class="mb-3" style="width:90px;height:90px;border-radius:50%;margin:0 auto;
+        border:4px solid {% if area.risk_level == 'low' %}var(--safe){% elif area.risk_level == 'medium' %}var(--warn){% else %}var(--danger){% endif %};
+        background:{% if area.risk_level == 'low' %}rgba(0,196,140,.08){% elif area.risk_level == 'medium' %}rgba(245,158,11,.08){% else %}rgba(239,68,68,.08){% endif %};
+        display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;
+          color:{% if area.risk_level == 'low' %}var(--safe){% elif area.risk_level == 'medium' %}var(--warn){% else %}var(--danger){% endif %};">{{ area.risk_score }}</span>
+        <span class="text-muted" style="font-size:.6rem;">/100</span>
+      </div>
+      <h5 class="fw-bold mb-1">{{ area.name }}</h5>
+      <p class="text-muted small mb-3">{{ area.city }}{% if area.state %}, {{ area.state }}{% endif %}</p>
+      <span class="badge rounded-pill mx-auto px-3 py-2 mb-3 {% if area.risk_level == 'low' %}badge-low{% elif area.risk_level == 'medium' %}badge-med{% else %}badge-high{% endif %}" style="font-size:.8rem;">
+        {% if area.risk_level == 'low' %}✓ LOW RISK{% elif area.risk_level == 'medium' %}⚡ MEDIUM RISK{% else %}⚠ HIGH RISK{% endif %}
+      </span>
+
+      <!-- Avg Rating -->
+      {% if avg_rating %}
+      <div class="text-center mb-3">
+        <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.4rem;color:#F59E0B;">{{ avg_rating }} ⭐</div>
+        <small class="text-muted">Community Rating</small>
+      </div>
+      {% endif %}
+
+      <!-- Action buttons -->
+      <div class="d-flex flex-column gap-2 mt-2">
+        {% if is_saved %}
+        <a href="{% url 'dashboard:unsave_area' area.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-bookmark-x me-1"></i>Remove Bookmark</a>
+        {% else %}
+        <a href="{% url 'dashboard:save_area' area.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-bookmark-plus me-1"></i>Save Area</a>
+        {% endif %}
+
+        <a href="{% url 'dashboard:download_report' area.id %}" class="btn btn-sm" style="background:rgba(26,86,255,.08);color:var(--accent);border:1.5px solid rgba(26,86,255,.2);">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF Report
+        </a>
+
+        {% if has_alert %}
+        <button class="btn btn-sm btn-outline-warning" onclick="document.getElementById('alertSection').scrollIntoView({behavior:'smooth'})">
+          <i class="bi bi-bell-fill me-1"></i>Alert Active
+        </button>
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('alertSection').scrollIntoView({behavior:'smooth'})">
+          <i class="bi bi-bell me-1"></i>Set Alert
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Trend card -->
+    <div class="card p-3 d-flex flex-row align-items-center gap-3">
+      <div class="icon-box" style="background:{% if area.trend == 'improving' %}rgba(0,196,140,.1){% elif area.trend == 'worsening' %}rgba(239,68,68,.1){% else %}rgba(245,158,11,.1){% endif %};">
+        <i class="bi bi-{% if area.trend == 'improving' %}graph-down-arrow{% elif area.trend == 'worsening' %}graph-up-arrow{% else %}dash-lg{% endif %} fs-5"
+           style="color:{% if area.trend == 'improving' %}var(--safe){% elif area.trend == 'worsening' %}var(--danger){% else %}var(--warn){% endif %};"></i>
+      </div>
+      <div>
+        <div class="fw-semibold small">Trend: <span style="color:{% if area.trend == 'improving' %}var(--safe){% elif area.trend == 'worsening' %}var(--danger){% else %}var(--warn){% endif %};">{{ area.trend|title }}</span></div>
+        <div class="text-muted" style="font-size:.75rem;">
+          {% if area.trend == 'improving' %}Crime rate decreasing{% elif area.trend == 'worsening' %}Crime rate increasing{% else %}Crime rate stable{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col-md-8">
+
+    <!-- AI Analysis -->
+    <div class="card p-4 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-cpu me-2 text-accent"></i>AI Safety Analysis</h6>
+      <p class="text-muted mb-3">{{ result.description }}</p>
+      <div class="row g-3">
+        <div class="col-6 col-md-3 text-center">
+          <div class="p-3 rounded-3" style="background:var(--bg);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.4rem;color:var(--warn);">{{ result.crime_counts.theft }}</div>
+            <small class="text-muted">Theft</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 text-center">
+          <div class="p-3 rounded-3" style="background:var(--bg);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.4rem;color:var(--danger);">{{ result.crime_counts.violence }}</div>
+            <small class="text-muted">Violence</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 text-center">
+          <div class="p-3 rounded-3" style="background:var(--bg);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.4rem;color:var(--accent);">{{ result.crime_counts.traffic }}</div>
+            <small class="text-muted">Traffic</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 text-center">
+          <div class="p-3 rounded-3" style="background:var(--bg);">
+            <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.4rem;color:#8B5CF6;">{{ result.crime_counts.fraud }}</div>
+            <small class="text-muted">Fraud</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crime Trend Chart -->
+    <div class="card p-4 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-graph-up me-2 text-accent"></i>6-Month Crime Trend</h6>
+      <div class="trend-chart-wrap">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Compare & Heatmap quick links -->
+    <div class="row g-3 mb-3">
+      <div class="col-6">
+        <a href="{% url 'dashboard:heatmap' %}" class="card p-3 d-flex flex-row align-items-center gap-3 text-decoration-none" style="transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+          <i class="bi bi-map text-accent fs-4"></i>
+          <div><div class="fw-semibold small">View on Heatmap</div><div class="text-muted" style="font-size:.72rem;">See risk map</div></div>
+        </a>
+      </div>
+      <div class="col-6">
+        <a href="{% url 'dashboard:compare' %}" class="card p-3 d-flex flex-row align-items-center gap-3 text-decoration-none" style="transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+          <i class="bi bi-bar-chart-steps text-accent fs-4"></i>
+          <div><div class="fw-semibold small">Compare Areas</div><div class="text-muted" style="font-size:.72rem;">Side by side</div></div>
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /col-md-8 -->
+
+  <!-- SAFER AREAS -->
+  {% if safer and area.risk_level != 'low' %}
+  <div class="col-12">
+    <div class="card p-4" style="border-color:rgba(0,196,140,.25);background:rgba(0,196,140,.02);">
+      <h6 class="fw-semibold mb-3" style="color:var(--safe);"><i class="bi bi-shield-check me-2"></i>Nearby Safer Areas</h6>
+      <div class="row g-3">
+        {% for s in safer %}
+        <div class="col-md-4">
+          <a href="{% url 'dashboard:area_detail' s.id %}" class="card p-3 text-decoration-none d-block" onmouseover="this.style.borderColor='var(--safe)'" onmouseout="this.style.borderColor=''">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="fw-semibold small text-dark">📍 {{ s.name }}</span>
+              <span class="fw-bold" style="font-family:'Syne',sans-serif;color:var(--safe);">{{ s.risk_score }}</span>
+            </div>
+            <div class="text-muted" style="font-size:.75rem;">{{ s.city }}</div>
+            <span class="badge badge-low mt-1" style="font-size:.65rem;">Low Risk</span>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- USER REVIEWS -->
+  <div class="col-12">
+    <div class="card">
+      <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="fw-bold mb-0"><i class="bi bi-star me-2 text-warning"></i>Community Reviews</h6>
+        <span class="text-muted small">{{ avg_rating }}⭐ avg · {{ reviews.count }} reviews</span>
+      </div>
+      <div class="row g-0">
+        <!-- Submit review -->
+        <div class="col-md-5 p-4 border-end">
+          <h6 class="fw-semibold mb-3">Rate This Area</h6>
+          <div class="star-rating mb-3" id="stars">
+            {% for i in "12345" %}<span class="star {% if user_review and user_review.rating >= forloop.counter %}active{% endif %}" data-val="{{ forloop.counter }}" onclick="setRating({{ forloop.counter }})">★</span>{% endfor %}
+          </div>
+          <textarea id="reviewComment" class="form-control mb-3" rows="3" placeholder="Share your experience about safety in this area..." style="font-size:.85rem;">{% if user_review %}{{ user_review.comment }}{% endif %}</textarea>
+          <button class="btn btn-accent btn-sm px-4" onclick="submitReview()">
+            {% if user_review %}<i class="bi bi-pencil me-1"></i>Update Review{% else %}<i class="bi bi-send me-1"></i>Submit Review{% endif %}
+          </button>
+          <div id="reviewMsg" class="mt-2 small" style="display:none;"></div>
+        </div>
+        <!-- Reviews list -->
+        <div class="col-md-7 p-4">
+          {% for review in reviews %}
+          <div class="review-card">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <span class="fw-semibold small">{{ review.user.get_full_name|default:review.user.username }}</span>
+              <span class="text-warning" style="font-size:.85rem;">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+            </div>
+            <p class="text-muted mb-1" style="font-size:.82rem;">{{ review.comment }}</p>
+            <small class="text-muted" style="font-size:.7rem;">{{ review.created_at|date:"M d, Y" }}</small>
+          </div>
+          {% empty %}
+          <div class="text-center py-4 text-muted"><i class="bi bi-chat-square-text fs-3 d-block mb-2"></i>No reviews yet. Be the first!</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMAIL ALERT SECTION -->
+  <div class="col-12" id="alertSection">
+    <div class="card p-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-bell me-2 text-accent"></i>Email Alert Subscription</h6>
+      {% if has_alert %}
+      <div class="alert alert-success border-0 d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>You are subscribed to alerts for <b>{{ area.name }}</b>. <a href="{% url 'dashboard:alerts' %}" class="alert-link">Manage alerts →</a></span>
+      </div>
+      {% else %}
+      <p class="text-muted mb-3">Get notified when the risk level changes for <b>{{ area.name }}</b>.</p>
+      <div class="d-flex gap-3 flex-wrap">
+        {% for val, label in alert_types %}
+        <button class="btn btn-outline-primary btn-sm px-3" onclick="subscribeAlert('{{ val }}')">
+          <i class="bi bi-bell me-1"></i>{{ label }}
+        </button>
+        {% endfor %}
+        <button class="btn btn-outline-primary btn-sm px-3" onclick="subscribeAlert('high_risk')"><i class="bi bi-bell me-1"></i>High Risk Alert</button>
+        <button class="btn btn-outline-secondary btn-sm px-3" onclick="subscribeAlert('any_change')"><i class="bi bi-bell me-1"></i>Any Change</button>
+        <button class="btn btn-outline-secondary btn-sm px-3" onclick="subscribeAlert('weekly')"><i class="bi bi-bell me-1"></i>Weekly Summary</button>
+      </div>
+      <div id="alertMsg" class="mt-2 small" style="display:none;"></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RECENT INCIDENTS -->
+  <div class="col-12">
+    <div class="card">
+      <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2 text-accent"></i>Recent Crime Records</h6>
+        <a href="{% url 'dashboard:download_report' area.id %}" class="btn btn-sm" style="background:rgba(26,86,255,.08);color:var(--accent);border:1px solid rgba(26,86,255,.2);font-size:.78rem;">
+          <i class="bi bi-download me-1"></i>Download PDF
+        </a>
+      </div>
+      {% for r in records %}
+      <div class="d-flex align-items-start gap-3 p-3 border-bottom">
+        <div class="icon-box mt-1" style="background:rgba(239,68,68,.08);width:34px;height:34px;border-radius:8px;min-width:34px;display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-exclamation-triangle small" style="color:var(--danger);"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-start">
+            <span class="fw-semibold small">{{ r.get_crime_type_display }}</span>
+            <small class="text-muted">{{ r.incident_date|date:"M d, Y" }}</small>
+          </div>
+          <p class="text-muted small mb-0 mt-1">{{ r.description }}</p>
+        </div>
+        <div class="text-center" style="min-width:40px;">
+          <div class="fw-bold small {% if r.severity <= 3 %}risk-low{% elif r.severity <= 6 %}risk-med{% else %}risk-high{% endif %}">{{ r.severity }}/10</div>
+          <div class="text-muted" style="font-size:.65rem;">severity</div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="p-4 text-center text-muted"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>No recent crime records.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let selectedRating = {{ user_review.rating|default:0 }};
+
+// Star rating
+function setRating(val) {
+  selectedRating = val;
+  document.querySelectorAll('.star').forEach((s,i) => {
+    s.classList.toggle('active', i < val);
+  });
+}
+document.querySelectorAll('.star').forEach(s => {
+  s.addEventListener('mouseover', () => document.querySelectorAll('.star').forEach((st,i) => st.classList.toggle('hover', i < s.dataset.val)));
+  s.addEventListener('mouseout',  () => document.querySelectorAll('.star').forEach(st => st.classList.remove('hover')));
+});
+
+// Submit review
+function submitReview() {
+  if (!selectedRating) { alert('Please select a rating.'); return; }
+  const comment = document.getElementById('reviewComment').value.trim();
+  if (comment.length < 10) { alert('Comment must be at least 10 characters.'); return; }
+  fetch('{% url "dashboard:submit_review" area.id %}', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':'{{ csrf_token }}'},
+    body:`rating=${selectedRating}&comment=${encodeURIComponent(comment)}`
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.error){alert(d.error);return;}
+    const msg = document.getElementById('reviewMsg');
+    msg.style.display='block'; msg.style.color='var(--safe)';
+    msg.textContent = `✓ Review ${d.status}! Average rating: ${d.avg_rating}⭐`;
+  });
+}
+
+// Subscribe alert
+function subscribeAlert(type) {
+  fetch('{% url "dashboard:subscribe_alert" area.id %}', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':'{{ csrf_token }}'},
+    body:`alert_type=${type}`
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    const msg = document.getElementById('alertMsg');
+    msg.style.display='block'; msg.style.color='var(--safe)';
+    msg.textContent = `✓ Subscribed to ${d.alert_type} for ${d.area}! Confirmation sent to your email.`;
+  });
+}
+
+// Crime trend chart
+fetch('{% url "dashboard:crime_trends" area.id %}')
+  .then(r=>r.json())
+  .then(d=>{
+    new Chart(document.getElementById('trendChart'), {
+      type:'line',
+      data:{
+        labels: d.labels,
+        datasets:[
+          { label:'Crime Count', data:d.crime_counts, borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,.08)', tension:.4, fill:true, pointRadius:5 },
+          { label:'Avg Severity', data:d.severity_avg, borderColor:'#F59E0B', backgroundColor:'transparent', tension:.4, borderDash:[5,5], pointRadius:4, yAxisID:'y2' }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'top', labels:{ font:{size:11} } } },
+        scales:{
+          y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{size:10}} },
+          y2:{ beginAtZero:true, position:'right', grid:{display:false}, ticks:{font:{size:10}, max:10} }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

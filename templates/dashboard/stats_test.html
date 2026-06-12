@@ -1,0 +1,71 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}Statistical Analysis{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <div class="icon-box" style="background:rgba(245,158,11,.1);"><i class="bi bi-calculator-fill fs-5" style="color:var(--warn);"></i></div>
+  <div><h5 class="fw-bold mb-0">Statistical Significance Test</h5><small class="text-muted">Chi-square test to compare crime patterns between two areas</small></div>
+</div>
+
+<div class="panel p-4 mb-4">
+  <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label small fw-semibold text-muted">Area 1</label>
+      <select name="area1" class="form-select">
+        <option value="">Select first area...</option>
+        {% for area in areas %}<option value="{{ area.id }}" {% if area1_id == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}, {{ area.city }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label small fw-semibold text-muted">Area 2</label>
+      <select name="area2" class="form-select">
+        <option value="">Select second area...</option>
+        {% for area in areas %}<option value="{{ area.id }}" {% if area2_id == area.id|stringformat:"s" %}selected{% endif %}>{{ area.name }}, {{ area.city }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn-primary-custom w-100 py-2 justify-content-center" style="border-radius:10px;">Run Test</button>
+    </div>
+  </form>
+</div>
+
+{% if result %}
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="panel p-4">
+      <h6 class="fw-bold mb-3">Test Results</h6>
+      <div class="d-flex flex-column gap-3">
+        <div class="p-3 rounded-3" style="background:var(--surface2);">
+          <div class="text-muted small mb-1">Chi-Square Statistic (χ²)</div>
+          <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.3rem;">{{ result.chi2_statistic }}</div>
+        </div>
+        <div class="p-3 rounded-3" style="background:var(--surface2);">
+          <div class="text-muted small mb-1">P-Value</div>
+          <div class="fw-bold" style="font-family:'Syne',sans-serif;font-size:1.3rem;">{{ result.p_value }}</div>
+        </div>
+        <div class="p-3 rounded-3" style="background:{% if result.is_significant %}rgba(0,196,140,.08){% else %}rgba(245,158,11,.08){% endif %};border:1px solid {% if result.is_significant %}rgba(0,196,140,.2){% else %}rgba(245,158,11,.2){% endif %};">
+          <div class="fw-semibold small" style="color:{% if result.is_significant %}var(--safe){% else %}var(--warn){% endif %};">
+            {% if result.is_significant %}✅ Statistically Significant{% elif result.is_significant == False %}⚠️ Not Significant{% else %}ℹ️ Install scipy for full analysis{% endif %}
+          </div>
+          <div class="text-muted small mt-1">{{ result.interpretation }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="panel p-4">
+      <h6 class="fw-bold mb-3">Crime Counts Comparison</h6>
+      {% for i, type in result.crime_types|enumerate %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between mb-1" style="font-size:.78rem;"><span class="text-muted">{{ type|title }}</span></div>
+        <div class="d-flex gap-2 align-items-center">
+          <div class="text-end" style="min-width:50px;font-size:.75rem;color:var(--primary);">{{ result.area1 }}: <b>{{ result.area1_crimes|slice:i }}</b></div>
+          <div class="text-end" style="min-width:50px;font-size:.75rem;color:var(--warn);">{{ result.area2 }}: <b>{{ result.area2_crimes|slice:i }}</b></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

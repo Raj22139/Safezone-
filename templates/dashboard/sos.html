@@ -1,0 +1,119 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block page_title %}SOS Emergency{% endblock %}
+
+{% block extra_css %}{{ block.super }}
+<style>
+  .sos-btn{width:160px;height:160px;border-radius:50%;background:var(--danger);border:6px solid rgba(239,68,68,.3);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;cursor:pointer;transition:all .2s;box-shadow:0 0 0 0 rgba(239,68,68,.4);margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
+  .sos-btn:hover,.sos-btn.active{transform:scale(1.05);box-shadow:0 0 0 20px rgba(239,68,68,.1);}
+  .sos-btn.sent{background:var(--safe);border-color:rgba(0,196,140,.3);animation:none;}
+  @keyframes sosPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}70%{box-shadow:0 0 0 30px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+  .sos-btn.pulse{animation:sosPulse 1.5s infinite;}
+  .emergency-num{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer;transition:all .2s;}
+  .emergency-num:hover{border-color:var(--danger);background:rgba(239,68,68,.03);}
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-4 justify-content-center">
+  <div class="col-md-5">
+    <div class="card p-4 text-center mb-4">
+      <h5 class="fw-bold mb-1" style="color:var(--danger);">🚨 Emergency SOS</h5>
+      <p class="text-muted small mb-4">Press the button to send emergency alert with your location</p>
+      <button class="sos-btn pulse" id="sosMainBtn" onclick="sendSOS()">
+        <i class="bi bi-exclamation-octagon" style="font-size:2rem;"></i>
+        <span>SOS</span>
+      </button>
+      <p class="text-muted small mt-3">Tap to send emergency alert + email notification</p>
+      <div id="sosStatus" style="display:none;" class="alert alert-success border-0 mt-3"></div>
+    </div>
+
+    <!-- Quick message -->
+    <div class="card p-3 mb-4">
+      <h6 class="fw-bold mb-2 small">Custom Message (optional)</h6>
+      <textarea id="sosMessage" class="form-control mb-2" rows="2" placeholder="Describe your emergency...">Emergency! I need help!</textarea>
+    </div>
+
+    <!-- Emergency Numbers -->
+    <div class="card p-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-telephone-fill me-2 text-danger"></i>Emergency Numbers</h6>
+      {% for num, label in emergency_numbers.items %}
+      <a href="tel:{{ label }}" class="emergency-num text-decoration-none">
+        <div><div class="fw-semibold small" style="color:var(--text);">{{ num }}</div></div>
+        <div class="fw-bold" style="font-family:'Syne',sans-serif;color:var(--danger);font-size:1.1rem;">{{ label }}</div>
+      </a>
+      {% empty %}
+      <div class="emergency-num"><div><div class="fw-semibold small">Police</div></div><div class="fw-bold" style="color:var(--danger);font-size:1.1rem;">100</div></div>
+      <div class="emergency-num"><div><div class="fw-semibold small">Ambulance</div></div><div class="fw-bold" style="color:var(--danger);font-size:1.1rem;">108</div></div>
+      <div class="emergency-num"><div><div class="fw-semibold small">Women Helpline</div></div><div class="fw-bold" style="color:var(--danger);font-size:1.1rem;">1091</div></div>
+      <div class="emergency-num"><div><div class="fw-semibold small">Emergency</div></div><div class="fw-bold" style="color:var(--danger);font-size:1.1rem;">112</div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <!-- Past Alerts -->
+    <div class="card">
+      <div class="p-3 border-bottom"><h6 class="fw-bold mb-0">Recent SOS Alerts</h6></div>
+      {% for alert in user_alerts %}
+      <div class="d-flex align-items-start gap-3 p-3 border-bottom" id="alert-{{ alert.pk }}">
+        <div class="icon-box mt-1" style="background:{% if alert.is_resolved %}rgba(0,196,140,.1){% else %}rgba(239,68,68,.1){% endif %};width:36px;height:36px;border-radius:9px;flex-shrink:0;">
+          <i class="bi bi-{% if alert.is_resolved %}check-circle{% else %}exclamation-circle{% endif %} small" style="color:{% if alert.is_resolved %}var(--safe){% else %}var(--danger){% endif %};"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small">{{ alert.message|truncatechars:60 }}</div>
+          <div class="text-muted" style="font-size:.72rem;">{{ alert.created_at|date:"M d, Y H:i" }} {% if alert.location_text %}· {{ alert.location_text }}{% endif %}</div>
+        </div>
+        {% if not alert.is_resolved %}
+        <button onclick="resolveAlert({{ alert.pk }})" class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:.72rem;">✓ Resolved</button>
+        {% else %}
+        <span class="badge badge-low" style="font-size:.65rem;">Resolved</span>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="p-4 text-center text-muted"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>No SOS alerts sent yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendSOS(){
+  const btn = document.getElementById('sosMainBtn');
+  const msg = document.getElementById('sosMessage').value;
+  btn.classList.remove('pulse'); btn.style.opacity='.7';
+
+  const geoPromise = new Promise(resolve => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>resolve({lat:pos.coords.latitude,lng:pos.coords.longitude}),()=>resolve({}),{timeout:3000});
+    } else resolve({});
+  });
+
+  geoPromise.then(coords => {
+    fetch('{% url "dashboard:sos_send" %}',{
+      method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+      body:JSON.stringify({lat:coords.lat,lng:coords.lng,message:msg,location_text:''})
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      btn.classList.add('sent'); btn.style.opacity='1';
+      btn.innerHTML='<i class="bi bi-check-circle" style="font-size:2rem;"></i><span>SENT</span>';
+      const status=document.getElementById('sosStatus');
+      status.style.display='block';
+      status.innerHTML=`✅ ${data.message}`;
+      setTimeout(()=>{btn.classList.remove('sent');btn.classList.add('pulse');btn.innerHTML='<i class="bi bi-exclamation-octagon" style="font-size:2rem;"></i><span>SOS</span>';status.style.display='none';},5000);
+    });
+  });
+}
+
+function resolveAlert(pk){
+  fetch(`/dashboard/sos/resolve/${pk}/`,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}})
+  .then(()=>{
+    const row=document.getElementById(`alert-${pk}`);
+    row.style.opacity='.5';
+    setTimeout(()=>row.remove(),300);
+  });
+}
+</script>
+{% endblock %}

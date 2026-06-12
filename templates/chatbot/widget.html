@@ -1,0 +1,431 @@
+{% load static %}
+<!-- ══ SAFEZONE AI CHATBOT WIDGET ══ -->
+
+<style>
+  /* ── Chat Bubble Button ── */
+  .sz-chat-btn {
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(26,86,255,0.45);
+    transition: transform .2s, box-shadow .2s;
+    font-size: 1.3rem;
+  }
+  .sz-chat-btn:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(26,86,255,0.55); }
+  .sz-chat-btn .notif-pip {
+    position: absolute; top: 3px; right: 3px;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #FF4B6E; border: 2px solid #fff;
+    font-size: .55rem; font-weight: 800; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Chat Window ── */
+  .sz-chat-window {
+    position: fixed; bottom: 96px; right: 28px; z-index: 998;
+    width: 360px; max-width: calc(100vw - 32px);
+    background: {% if context == 'admin' %}#13151E{% else %}#fff{% endif %};
+    border: 1.5px solid {% if context == 'admin' %}#252A3D{% else %}#DDE2EF{% endif %};
+    border-radius: 18px;
+    box-shadow: 0 12px 48px rgba(0,0,0,{% if context == 'admin' %}.5{% else %}.15{% endif %});
+    display: flex; flex-direction: column;
+    max-height: 520px; overflow: hidden;
+    transform: scale(.92) translateY(12px);
+    opacity: 0; pointer-events: none;
+    transition: all .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .sz-chat-window.open {
+    transform: scale(1) translateY(0);
+    opacity: 1; pointer-events: all;
+  }
+
+  /* Header */
+  .sz-chat-head {
+    padding: 14px 16px;
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 16px 16px 0 0;
+  }
+  .sz-bot-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .sz-chat-head-info h6 { color: #fff; font-weight: 700; margin: 0; font-size: .9rem; }
+  .sz-chat-head-info small { color: rgba(255,255,255,.75); font-size: .72rem; }
+  .sz-online-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #4ADE80; border: 1.5px solid #fff;
+    display: inline-block; margin-right: 4px;
+  }
+  .sz-head-actions { margin-left: auto; display: flex; gap: 6px; }
+  .sz-head-btn {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; transition: background .2s;
+  }
+  .sz-head-btn:hover { background: rgba(255,255,255,.28); }
+
+  /* Messages area */
+  .sz-messages {
+    flex: 1; overflow-y: auto; padding: 14px 14px 8px;
+    display: flex; flex-direction: column; gap: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: {% if context == 'admin' %}#252A3D #13151E{% else %}#DDE2EF #fff{% endif %};
+  }
+
+  /* Message bubbles */
+  .sz-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 88%; }
+  .sz-msg.bot { align-self: flex-start; }
+  .sz-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .sz-msg-ava {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: .75rem;
+  }
+  .sz-msg.bot .sz-msg-ava { background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %}; color: #fff; }
+  .sz-msg.user .sz-msg-ava { background: {% if context == 'admin' %}#22D3A4{% else %}#00C48C{% endif %}; color: #fff; }
+  .sz-bubble {
+    padding: 10px 13px; border-radius: 14px;
+    font-size: .83rem; line-height: 1.55; word-break: break-word;
+  }
+  .sz-msg.bot .sz-bubble {
+    background: {% if context == 'admin' %}#1A1D2A{% else %}#F0F2F8{% endif %};
+    color: {% if context == 'admin' %}#E8EAF2{% else %}#0D1321{% endif %};
+    border-radius: 14px 14px 14px 3px;
+  }
+  .sz-msg.user .sz-bubble {
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    color: #fff; border-radius: 14px 14px 3px 14px;
+  }
+  .sz-bubble p { margin-bottom: 6px; }
+  .sz-bubble p:last-child { margin-bottom: 0; }
+  .sz-bubble strong { font-weight: 700; }
+  .sz-bubble a { color: {% if context == 'admin' %}#7C9FFF{% else %}#4F80FF{% endif %}; }
+  .sz-ts { font-size: .62rem; color: {% if context == 'admin' %}#6B7299{% else %}#9BA3BC{% endif %}; margin-top: 2px; }
+  .sz-source-tag {
+    font-size: .6rem; padding: 1px 5px; border-radius: 4px; margin-top: 3px; display: inline-block;
+    background: {% if context == 'admin' %}#252A3D{% else %}#E8EEFF{% endif %};
+    color: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+  }
+
+  /* Typing indicator */
+  .sz-typing { display: none; align-self: flex-start; }
+  .sz-typing.show { display: flex; }
+  .sz-typing-dots { display: flex; gap: 4px; align-items: center; padding: 10px 13px;
+    background: {% if context == 'admin' %}#1A1D2A{% else %}#F0F2F8{% endif %};
+    border-radius: 14px 14px 14px 3px; }
+  .sz-typing-dots span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    animation: szBounce .9s infinite;
+  }
+  .sz-typing-dots span:nth-child(2) { animation-delay: .15s; }
+  .sz-typing-dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes szBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+  /* Quick suggestions */
+  .sz-suggestions {
+    padding: 6px 14px 0;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .sz-chip {
+    background: {% if context == 'admin' %}#1A1D2A{% else %}#F0F2F8{% endif %};
+    border: 1px solid {% if context == 'admin' %}#252A3D{% else %}#DDE2EF{% endif %};
+    color: {% if context == 'admin' %}#9BA3BC{% else %}#6B7594{% endif %};
+    font-size: .72rem; padding: 5px 10px; border-radius: 100px;
+    cursor: pointer; transition: all .17s; white-space: nowrap;
+  }
+  .sz-chip:hover {
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    border-color: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    color: #fff;
+  }
+
+  /* Input area */
+  .sz-input-area {
+    padding: 10px 12px 12px;
+    border-top: 1px solid {% if context == 'admin' %}#252A3D{% else %}#DDE2EF{% endif %};
+    display: flex; gap: 8px; align-items: center;
+  }
+  .sz-input {
+    flex: 1; border: 1.5px solid {% if context == 'admin' %}#252A3D{% else %}#DDE2EF{% endif %};
+    border-radius: 22px; padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: .84rem;
+    background: {% if context == 'admin' %}#1A1D2A{% else %}#F7F8FC{% endif %};
+    color: {% if context == 'admin' %}#E8EAF2{% else %}#0D1321{% endif %};
+    outline: none; transition: border-color .2s;
+    resize: none; max-height: 80px; overflow-y: auto;
+  }
+  .sz-input:focus {
+    border-color: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+  }
+  .sz-input::placeholder { color: {% if context == 'admin' %}#3E4463{% else %}#B0B8D0{% endif %}; }
+  .sz-send-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; transition: all .2s; flex-shrink: 0;
+  }
+  .sz-send-btn:hover { transform: scale(1.08); opacity: .9; }
+  .sz-send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+  /* Welcome message */
+  .sz-welcome {
+    text-align: center; padding: 18px 14px 6px;
+  }
+  .sz-welcome .sz-bot-logo {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: {% if context == 'admin' %}#4F6EFF{% else %}#1A56FF{% endif %};
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; margin: 0 auto 10px;
+  }
+  .sz-welcome h6 { font-weight: 700; margin-bottom: 4px; font-size: .9rem;
+    color: {% if context == 'admin' %}#E8EAF2{% else %}#0D1321{% endif %}; }
+  .sz-welcome p { font-size: .78rem;
+    color: {% if context == 'admin' %}#6B7299{% else %}#6B7594{% endif %}; }
+</style>
+
+<!-- Chat toggle button -->
+<button class="sz-chat-btn" id="szChatBtn" title="SafeZone AI Assistant" onclick="szToggleChat()">
+  <i class="bi bi-shield-check" id="szChatIcon"></i>
+  <span class="notif-pip">1</span>
+</button>
+
+<!-- Chat window -->
+<div class="sz-chat-window" id="szChatWindow">
+
+  <!-- Header -->
+  <div class="sz-chat-head">
+    <div class="sz-bot-avatar">🛡️</div>
+    <div class="sz-chat-head-info">
+      <h6>SafeZone AI Assistant</h6>
+      <small><span class="sz-online-dot"></span>Always online</small>
+    </div>
+    <div class="sz-head-actions">
+      <button class="sz-head-btn" onclick="szClearChat()" title="Clear chat">
+        <i class="bi bi-arrow-counterclockwise"></i>
+      </button>
+      <button class="sz-head-btn" onclick="szToggleChat()" title="Close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="sz-messages" id="szMessages">
+    <!-- Welcome -->
+    <div class="sz-welcome" id="szWelcome">
+      <div class="sz-bot-logo">🛡️</div>
+      <h6>Hi! I'm SafeZone Assistant</h6>
+      <p>Ask me about area safety, risk scores, crime types, or safety tips!</p>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="sz-typing sz-msg bot" id="szTyping">
+      <div class="sz-msg-ava">🛡️</div>
+      <div class="sz-typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick suggestions -->
+  <div class="sz-suggestions" id="szSuggestions"></div>
+
+  <!-- Input -->
+  <div class="sz-input-area">
+    <textarea
+      class="sz-input" id="szInput"
+      placeholder="Ask about area safety..."
+      rows="1"
+      onkeydown="szHandleKey(event)"
+      oninput="szAutoResize(this)"
+    ></textarea>
+    <button class="sz-send-btn" id="szSendBtn" onclick="szSendMessage()" title="Send">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const SZ_CONTEXT   = '{{ context|default:"public" }}';
+  const SZ_API       = '/chatbot/message/';
+  const SZ_SUGGEST   = '/chatbot/suggestions/';
+  const SZ_CLEAR_URL = '/chatbot/clear/';
+  const CSRF_TOKEN   = '{{ csrf_token }}';
+
+  let szSessionId  = null;
+  let szIsOpen     = false;
+  let szIsTyping   = false;
+
+  // ── Toggle chat window ──
+  window.szToggleChat = function() {
+    szIsOpen = !szIsOpen;
+    const win  = document.getElementById('szChatWindow');
+    const icon = document.getElementById('szChatIcon');
+    const pip  = document.querySelector('.sz-chat-btn .notif-pip');
+    win.classList.toggle('open', szIsOpen);
+    icon.className = szIsOpen ? 'bi bi-x-lg' : 'bi bi-shield-check';
+    if (pip) pip.style.display = 'none';
+    if (szIsOpen) {
+      szLoadSuggestions();
+      document.getElementById('szInput').focus();
+    }
+  };
+
+  // ── Send message ──
+  window.szSendMessage = function() {
+    const input = document.getElementById('szInput');
+    const msg   = input.value.trim();
+    if (!msg || szIsTyping) return;
+
+    input.value = '';
+    szAutoResize(input);
+    szHideWelcome();
+    szAppendMessage('user', msg);
+    szShowTyping();
+
+    fetch(SZ_API, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  CSRF_TOKEN,
+      },
+      body: JSON.stringify({
+        message:    msg,
+        context:    SZ_CONTEXT,
+        session_id: szSessionId,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      szHideTyping();
+      szSessionId = data.session_id;
+      szAppendMessage('bot', data.response, data.source);
+      szLoadSuggestions();
+    })
+    .catch(() => {
+      szHideTyping();
+      szAppendMessage('bot',
+        "⚠️ Connection error. Please try again.",
+        'error'
+      );
+    });
+  };
+
+  // ── Keyboard handler ──
+  window.szHandleKey = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      szSendMessage();
+    }
+  };
+
+  // ── Auto resize textarea ──
+  window.szAutoResize = function(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  };
+
+  // ── Append message bubble ──
+  function szAppendMessage(role, content, source) {
+    const container = document.getElementById('szMessages');
+    const typing    = document.getElementById('szTyping');
+    const div = document.createElement('div');
+    div.className = `sz-msg ${role}`;
+
+    const now = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const sourceLabel = (role === 'bot' && source === 'ai')
+      ? '<span class="sz-source-tag">✨ AI</span>' : '';
+
+    // Convert markdown-style bold **text** and newlines
+    const formatted = content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+
+    div.innerHTML = `
+      <div class="sz-msg-ava">${role === 'bot' ? '🛡️' : '👤'}</div>
+      <div>
+        <div class="sz-bubble">${formatted}</div>
+        <div class="sz-ts">${now} ${sourceLabel}</div>
+      </div>`;
+
+    container.insertBefore(div, typing);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ── Typing indicator ──
+  function szShowTyping() {
+    szIsTyping = true;
+    document.getElementById('szTyping').classList.add('show');
+    document.getElementById('szSendBtn').disabled = true;
+    const c = document.getElementById('szMessages');
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function szHideTyping() {
+    szIsTyping = false;
+    document.getElementById('szTyping').classList.remove('show');
+    document.getElementById('szSendBtn').disabled = false;
+  }
+
+  // ── Hide welcome on first message ──
+  function szHideWelcome() {
+    const w = document.getElementById('szWelcome');
+    if (w) w.remove();
+  }
+
+  // ── Load quick suggestions ──
+  function szLoadSuggestions() {
+    fetch(`${SZ_SUGGEST}?context=${SZ_CONTEXT}`)
+      .then(r => r.json())
+      .then(data => {
+        const box = document.getElementById('szSuggestions');
+        box.innerHTML = data.suggestions
+          .map(s => `<span class="sz-chip" onclick="szQuickReply('${s.replace(/'/g,"\'")}')">${s}</span>`)
+          .join('');
+      })
+      .catch(() => {});
+  }
+
+  // ── Quick reply click ──
+  window.szQuickReply = function(text) {
+    document.getElementById('szInput').value = text;
+    szSendMessage();
+  };
+
+  // ── Clear chat ──
+  window.szClearChat = function() {
+    fetch(SZ_CLEAR_URL, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+      body: new URLSearchParams({ context: SZ_CONTEXT }),
+    })
+    .then(() => {
+      const msgs = document.getElementById('szMessages');
+      // Remove all messages except typing indicator
+      Array.from(msgs.children).forEach(c => {
+        if (c.id !== 'szTyping') c.remove();
+      });
+      // Re-add welcome
+      const welcome = document.createElement('div');
+      welcome.id = 'szWelcome';
+      welcome.className = 'sz-welcome';
+      welcome.innerHTML = `
+        <div class="sz-bot-logo">🛡️</div>
+        <h6>Chat cleared!</h6>
+        <p>Ask me anything about area safety.</p>`;
+      msgs.insertBefore(welcome, document.getElementById('szTyping'));
+      szSessionId = null;
+    });
+  };
+
+  // Load suggestions on page load
+  szLoadSuggestions();
+})();
+</script>

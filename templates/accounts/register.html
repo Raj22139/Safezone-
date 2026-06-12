@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}Register — SafeZone AI{% endblock %}
+{% block extra_css %}
+<style>
+  .auth-page { min-height:100vh; display:flex; }
+  .auth-left { flex:1; display:none; position:relative; overflow:hidden; background:linear-gradient(135deg,#0D1321,#1a2744,#0f2560); }
+  @media(min-width:992px){ .auth-left{display:flex;align-items:center;justify-content:center;} }
+  .auth-left-bg { position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 30% 40%,rgba(26,86,255,.35),transparent 60%),radial-gradient(ellipse 50% 40% at 80% 80%,rgba(0,196,140,.15),transparent 50%); }
+  .auth-grid { position:absolute;inset:0;opacity:.15;background-image:linear-gradient(rgba(255,255,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.1) 1px,transparent 1px);background-size:40px 40px; }
+  .auth-right { width:100%;display:flex;align-items:center;justify-content:center;padding:40px 24px; }
+  .step-indicator { display:flex;align-items:center;gap:0;margin-bottom:32px; }
+  .step-dot { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:.72rem;transition:var(--transition);flex-shrink:0; }
+  .step-dot.active { background:var(--primary);color:#fff;box-shadow:0 0 0 3px rgba(26,86,255,.2); }
+  .step-dot.done { background:var(--safe);color:#fff; }
+  .step-dot.inactive { background:var(--surface2);color:var(--muted); }
+  .step-line { flex:1;height:2px;background:var(--border);transition:background .3s; }
+  .step-line.done { background:var(--safe); }
+  .input-group-custom { position:relative; }
+  .input-group-custom .input-icon { position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none; }
+  .input-group-custom input { padding-left:40px; }
+  .strength-bar { height:4px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-top:8px; }
+  .strength-fill { height:100%;border-radius:4px;transition:width .3s,background .3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-bg"></div>
+    <div class="auth-grid"></div>
+    <div style="position:relative;z-index:2;padding:48px;max-width:440px;" class="animate-fade-up">
+      <div class="d-flex align-items-center gap-3 mb-5">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--primary);display:flex;align-items:center;justify-content:center;"><i class="bi bi-shield-fill text-white fs-5"></i></div>
+        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#fff;">SafeZone <span style="color:#93ABFF;">AI</span></span>
+      </div>
+      <h2 style="color:#fff;font-weight:800;letter-spacing:-1px;" class="mb-3">Join SafeZone AI<br>for Free 🛡️</h2>
+      <p style="color:rgba(255,255,255,.6);line-height:1.75;" class="mb-5">Get access to crime heatmaps, AI risk scores, SOS alerts, and 25+ safety features.</p>
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex align-items-center gap-3"><div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-check-lg text-white small"></i></div><span style="color:rgba(255,255,255,.8);font-size:.88rem;">Free forever — no credit card needed</span></div>
+        <div class="d-flex align-items-center gap-3"><div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-check-lg text-white small"></i></div><span style="color:rgba(255,255,255,.8);font-size:.88rem;">Search unlimited areas</span></div>
+        <div class="d-flex align-items-center gap-3"><div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-check-lg text-white small"></i></div><span style="color:rgba(255,255,255,.8);font-size:.88rem;">PDF reports & email alerts</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div style="width:100%;max-width:440px;" class="animate-scale-in">
+      <a href="/" class="d-flex align-items-center gap-2 text-decoration-none mb-4" style="font-family:'Syne',sans-serif;font-weight:800;color:var(--text);">
+        <div style="width:32px;height:32px;border-radius:9px;background:var(--primary);display:flex;align-items:center;justify-content:center;"><i class="bi bi-shield-fill text-white small"></i></div>
+        SafeZone <span style="color:var(--primary);">AI</span>
+      </a>
+
+      <h4 class="fw-bold mb-1">Create your account</h4>
+      <p class="text-muted small mb-4">Join thousands staying safe with SafeZone AI</p>
+
+      {% if messages %}{% for msg in messages %}<div class="alert border-0 py-2 mb-3" style="background:rgba(239,68,68,.08);color:var(--danger);border-radius:10px;font-size:.85rem;"><i class="bi bi-exclamation-circle me-2"></i>{{ msg }}</div>{% endfor %}{% endif %}
+
+      <form method="post" id="regForm">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label small fw-semibold text-muted mb-1">First Name *</label>
+            <div class="input-group-custom"><i class="bi bi-person input-icon"></i><input type="text" name="first_name" class="form-control" placeholder="First name" required/></div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold text-muted mb-1">Last Name *</label>
+            <input type="text" name="last_name" class="form-control" placeholder="Last name" required/>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted mb-1">Username *</label>
+            <div class="input-group-custom"><i class="bi bi-at input-icon"></i><input type="text" name="username" class="form-control" placeholder="Choose a username" required/></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted mb-1">Email *</label>
+            <div class="input-group-custom"><i class="bi bi-envelope input-icon"></i><input type="email" name="email" class="form-control" placeholder="your@email.com" required/></div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold text-muted mb-1">Phone</label>
+            <div class="input-group-custom"><i class="bi bi-phone input-icon"></i><input type="text" name="phone" class="form-control" placeholder="+91 9999999999"/></div>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold text-muted mb-1">City</label>
+            <div class="input-group-custom"><i class="bi bi-geo-alt input-icon"></i><input type="text" name="city" class="form-control" placeholder="Your city"/></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted mb-1">Password *</label>
+            <div class="input-group-custom">
+              <i class="bi bi-lock input-icon"></i>
+              <input type="password" name="password1" class="form-control" placeholder="Create password" required id="pwd1" oninput="checkStrength(this.value)"/>
+              <button type="button" onclick="togglePwd('pwd1','eye1')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;"><i class="bi bi-eye" id="eye1"></i></button>
+            </div>
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill" style="width:0%;"></div></div>
+            <div id="strengthText" style="font-size:.72rem;color:var(--muted);margin-top:3px;"></div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold text-muted mb-1">Confirm Password *</label>
+            <div class="input-group-custom"><i class="bi bi-shield-lock input-icon"></i><input type="password" name="password2" class="form-control" placeholder="Repeat password" required id="pwd2"/></div>
+          </div>
+          <div class="col-12 mt-2">
+            <button type="submit" class="btn-primary-custom w-100 py-3 justify-content-center" style="border-radius:12px;font-size:.95rem;" id="regBtn">
+              <i class="bi bi-person-check"></i> Create Account
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <p class="text-center text-muted small mt-4 mb-0">
+        Already have an account? <a href="{% url 'accounts:login' %}" class="fw-semibold" style="color:var(--primary);text-decoration:none;">Login here →</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block chatbot %}{% endblock %}
+{% block extra_js %}
+<script>
+function togglePwd(id, iconId) {
+  const i = document.getElementById(id), ic = document.getElementById(iconId);
+  i.type = i.type === 'password' ? 'text' : 'password';
+  ic.className = i.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+function checkStrength(v) {
+  let score = 0;
+  if (v.length >= 8) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  const fill  = document.getElementById('strengthFill');
+  const text  = document.getElementById('strengthText');
+  const levels = [
+    {w:'0%',  bg:'transparent', t:''},
+    {w:'25%', bg:'#EF4444', t:'Weak'},
+    {w:'50%', bg:'#F59E0B', t:'Fair'},
+    {w:'75%', bg:'#1A56FF', t:'Good'},
+    {w:'100%',bg:'#00C48C', t:'Strong ✓'},
+  ];
+  const l = levels[score] || levels[0];
+  fill.style.width = l.w; fill.style.background = l.bg; text.textContent = l.t; text.style.color = l.bg;
+}
+document.getElementById('regForm').addEventListener('submit', () => {
+  const btn = document.getElementById('regBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account...';
+  btn.style.opacity = '.8';
+});
+</script>
+{% endblock %}
