@@ -69,3 +69,5 @@ python-telegram-bot==22.1
 
 django-crispy-forms==2.3
 crispy-bootstrap5==2025.6
+dj-database-url
+psycopg2-binary
