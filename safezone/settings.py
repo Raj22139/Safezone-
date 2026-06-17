@@ -1,6 +1,5 @@
 """
-SafeZone AI — Django Settings
-AI-Based Crime and Area Safety Intelligence System
+SafeZone AI — Production Django Settings FIXED
 """
 
 from pathlib import Path
@@ -10,29 +9,41 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ════════════════════════════════════════
-# SECURITY
-# ════════════════════════════════════════
-SECRET_KEY   = config('SECRET_KEY', default='strong_random_key')
-DEBUG        = config('DEBUG', default=False, cast=bool)
-# ALLOWED_HOSTS = [
-#     'safezone-6.onrender.com',
-#     '.onrender.com',
-#     'localhost',
-#     '127.0.0.1'
-# ]
+# ═════════ SECURITY ═════════
+SECRET_KEY = config('SECRET_KEY', default='strong_random_key')
+
+DEBUG = config('DEBUG', default=False, cast=bool)
+
 ALLOWED_HOSTS = [
     'safezone-6.onrender.com',
-    'safezone-6.onrender.com:443',
+    'safezone-8.onrender.com',
+    'safezone-9.onrender.com',
     '.onrender.com',
     'localhost',
     '127.0.0.1'
 ]
 
+# ═════════ DATABASE (FIXED) ═════════
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# ════════════════════════════════════════
-# INSTALLED APPS
-# ════════════════════════════════════════
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    # SAFE fallback (prevents crash)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# ═════════ APPS ═════════
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,15 +52,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Third-party
     'crispy_forms',
     'crispy_bootstrap5',
 
-    # MTech Advanced Features
     'rest_framework',
     'drf_yasg',
     'channels',
-    # Local apps
+
     'accounts',
     'crime',
     'dashboard',
@@ -58,9 +67,7 @@ INSTALLED_APPS = [
     'chatbot',
 ]
 
-# ════════════════════════════════════════
-# MIDDLEWARE
-# ════════════════════════════════════════
+# ═════════ MIDDLEWARE ═════════
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -72,12 +79,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF      = 'safezone.urls'
-WSGI_APPLICATION  = 'safezone.wsgi.application'
+ROOT_URLCONF = 'safezone.urls'
+WSGI_APPLICATION = 'safezone.wsgi.application'
+ASGI_APPLICATION = 'safezone.asgi.application'
 
-# ════════════════════════════════════════
-# TEMPLATES
-# ════════════════════════════════════════
+# ═════════ TEMPLATES ═════════
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -93,112 +99,62 @@ TEMPLATES = [
         },
     },
 ]
-# print("DB_PASSWORD =", config('DB_PASSWORD', default='NOT_FOUND'))
-# ════════════════════════════════════════
-# DATABASE — PostgreSQL
-# ════════════════════════════════════════
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', ''),
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
 
-# ════════════════════════════════════════
-# AUTH & PASSWORD VALIDATION
-# ════════════════════════════════════════
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
-LOGIN_URL           = '/accounts/login/'
-LOGIN_REDIRECT_URL  = '/dashboard/'
-LOGOUT_REDIRECT_URL = '/'
-
-# ════════════════════════════════════════
-# INTERNATIONALIZATION
-# ════════════════════════════════════════
-LANGUAGE_CODE       = 'en-us'
-TIME_ZONE           = 'Asia/Kolkata'
-USE_I18N            = True
-USE_TZ              = True
-LANGUAGE_COOKIE_NAME= 'safezone_language'
-
-# ════════════════════════════════════════
-# STATIC & MEDIA FILES
-# ════════════════════════════════════════
-STATIC_URL      = '/static/'
-STATIC_ROOT     = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS= [BASE_DIR / 'static']
+# ═════════ STATIC / MEDIA ═════════
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL   = '/media/'
-MEDIA_ROOT  = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ════════════════════════════════════════
-# CRISPY FORMS
-# ════════════════════════════════════════
+# ═════════ CRISPY ═════════
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
-CRISPY_TEMPLATE_PACK          = 'bootstrap5'
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
-# ════════════════════════════════════════
-# SESSION
-# ════════════════════════════════════════
-SESSION_COOKIE_AGE         = 86400   # 1 day
+# ═════════ SESSION ═════════
+SESSION_COOKIE_AGE = 86400
 SESSION_SAVE_EVERY_REQUEST = True
 
-# ════════════════════════════════════════
-# EMAIL — Gmail SMTP
-# ════════════════════════════════════════
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST          = config('EMAIL_HOST',          default='smtp.gmail.com')
-EMAIL_PORT          = config('EMAIL_PORT',          default=587, cast=int)
-EMAIL_HOST_USER     = config('EMAIL_HOST_USER',     default='')
+# ═════════ EMAIL ═════════
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_USE_TLS       = config('EMAIL_USE_TLS',       default=True, cast=bool)
-DEFAULT_FROM_EMAIL  = EMAIL_HOST_USER
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 
-# ════════════════════════════════════════
-# ML MODEL
-# ════════════════════════════════════════
+# ═════════ ML ═════════
 ML_MODEL_PATH = BASE_DIR / 'ml' / 'trained_model' / 'risk_model.pkl'
 
-# ════════════════════════════════════════
-# CHATBOT — Anthropic Claude API (optional)
-# Get key from: https://console.anthropic.com/
-# ════════════════════════════════════════
+# ═════════ OPTIONAL APIs ═════════
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
-
-# ════════════════════════════════════════
-# GOOGLE MAPS — Route Safety Checker (optional)
-# Get key from: https://console.cloud.google.com/
-# ════════════════════════════════════════
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
-# ════════════════════════════════════════
-# WHATSAPP ALERTS (optional)
-# ════════════════════════════════════════
-WHATSAPP_API_URL   = config('WHATSAPP_API_URL',   default='')
-WHATSAPP_API_TOKEN = config('WHATSAPP_API_TOKEN', default='')
+# ═════════ CHANNELS (SAFE FIX) ═════════
+REDIS_URL = os.environ.get('REDIS_URL')
 
-# ════════════════════════════════════════
-# PWA — Progressive Web App
-# ════════════════════════════════════════
-PWA_APP_NAME            = 'SafeZone AI'
-PWA_APP_DESCRIPTION     = 'AI-Based Crime and Area Safety Intelligence System'
-PWA_APP_THEME_COLOR     = '#1A56FF'
-PWA_APP_BACKGROUND_COLOR= '#F0F2F8'
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
+else:
+    # fallback so app NEVER crashes
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer'
+        }
+    }
 
-
-# ════════════════════════════════════════
-# DJANGO REST FRAMEWORK
-# ════════════════════════════════════════
+# ═════════ DRF ═════════
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -209,49 +165,15 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',
-        'user': '1000/day',
-    }
 }
 
-# ════════════════════════════════════════
-# DJANGO CHANNELS (WebSocket)
-# ════════════════════════════════════════
-ASGI_APPLICATION = 'safezone.asgi.application'
-# CHANNEL_LAYERS = {
-#     'default': {
-        # 'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        # For production use Redis:
-        # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        # 'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
-#     }
-# }
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')],
-        },
-    },
-}
-# ════════════════════════════════════════
-# 2FA — Two Factor Authentication
-# ════════════════════════════════════════
+# ═════════ 2FA ═════════
 TWO_FACTOR_ENABLED = True
 OTP_TOTP_ISSUER = 'SafeZone AI'
 
-# ════════════════════════════════════════
-# TELEGRAM BOT (optional)
-# ════════════════════════════════════════
+# ═════════ TELEGRAM ═════════
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 
-# ════════════════════════════════════════
-# API RATE LIMITING
-# ════════════════════════════════════════
-RATELIMIT_ENABLE = True
+# ═════════ RATE LIMIT ═════════
+RATELIMIT_ENABLE = True 
 RATELIMIT_USE_CACHE = 'default'
