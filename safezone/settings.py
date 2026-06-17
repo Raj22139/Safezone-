@@ -5,18 +5,21 @@ AI-Based Crime and Area Safety Intelligence System
 
 from pathlib import Path
 from decouple import config
+import dj_database_url
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ════════════════════════════════════════
 # SECURITY
 # ════════════════════════════════════════
-SECRET_KEY   = config('SECRET_KEY', default='django-insecure-change-this-in-production-xyz123')
+SECRET_KEY   = config('SECRET_KEY', default='strong_random_key')
 DEBUG        = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,safezone-6.onrender.com'
+     default='safezone-6.onrender.com,.onrender.com,localhost,127.0.0.1'
 ).split(',')
+
 
 # ════════════════════════════════════════
 # INSTALLED APPS
@@ -86,14 +89,9 @@ TEMPLATES = [
 # DATABASE — PostgreSQL
 # ════════════════════════════════════════
 DATABASES = {
-    'default': {
-        'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     config('DB_NAME',     default='safezone_db'),
-        'USER':     config('DB_USER',     default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='12345'),
-        'HOST':     config('DB_HOST',     default='localhost'),
-        'PORT':     config('DB_PORT',     default='5432'),
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL')
+    )
 }
 
 # ════════════════════════════════════════
@@ -214,15 +212,22 @@ REST_FRAMEWORK = {
 # DJANGO CHANNELS (WebSocket)
 # ════════════════════════════════════════
 ASGI_APPLICATION = 'safezone.asgi.application'
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+# CHANNEL_LAYERS = {
+#     'default': {
+        # 'BACKEND': 'channels.layers.InMemoryChannelLayer',
         # For production use Redis:
         # 'BACKEND': 'channels_redis.core.RedisChannelLayer',
         # 'CONFIG': {'hosts': [('127.0.0.1', 6379)]},
-    }
+#     }
+# }
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379')],
+        },
+    },
 }
-
 # ════════════════════════════════════════
 # 2FA — Two Factor Authentication
 # ════════════════════════════════════════
