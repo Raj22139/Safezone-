@@ -15,10 +15,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ════════════════════════════════════════
 SECRET_KEY   = config('SECRET_KEY', default='strong_random_key')
 DEBUG        = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config(
-    'ALLOWED_HOSTS',
-     default='safezone-6.onrender.com,.onrender.com,localhost,127.0.0.1'
-).split(',')
+# ALLOWED_HOSTS = [
+#     'safezone-6.onrender.com',
+#     '.onrender.com',
+#     'localhost',
+#     '127.0.0.1'
+# ]
+ALLOWED_HOSTS = [
+    'safezone-6.onrender.com',
+    'safezone-6.onrender.com:443',
+    '.onrender.com',
+    'localhost',
+    '127.0.0.1'
+]
 
 
 # ════════════════════════════════════════
