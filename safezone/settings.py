@@ -1,5 +1,5 @@
 """
-SafeZone AI — Production Django Settings FIXED
+SafeZone AI — Production Django Settings (FIXED)
 """
 
 from pathlib import Path
@@ -10,20 +10,17 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ═════════ SECURITY ═════════
-SECRET_KEY = config('SECRET_KEY', default='strong_random_key')
+SECRET_KEY = config('SECRET_KEY')  # No default — crash loud if missing
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = [
-    'safezone-6.onrender.com',
-    'safezone-8.onrender.com',
-    'safezone-9.onrender.com',
     '.onrender.com',
     'localhost',
-    '127.0.0.1'
+    '127.0.0.1',
 ]
 
-# ═════════ DATABASE (FIXED) ═════════
+# ═════════ DATABASE ═════════
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -31,11 +28,10 @@ if DATABASE_URL:
         'default': dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True
+            ssl_require=True,
         )
     }
 else:
-    # SAFE fallback (prevents crash)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -103,7 +99,12 @@ TEMPLATES = [
 # ═════════ STATIC / MEDIA ═════════
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# FIX: Only include STATICFILES_DIRS if the 'static' folder actually exists
+_static_dir = BASE_DIR / 'static'
+if _static_dir.exists():
+    STATICFILES_DIRS = [_static_dir]
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
@@ -134,7 +135,7 @@ ML_MODEL_PATH = BASE_DIR / 'ml' / 'trained_model' / 'risk_model.pkl'
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
 
-# ═════════ CHANNELS (SAFE FIX) ═════════
+# ═════════ CHANNELS ═════════
 REDIS_URL = os.environ.get('REDIS_URL')
 
 if REDIS_URL:
@@ -147,10 +148,9 @@ if REDIS_URL:
         },
     }
 else:
-    # fallback so app NEVER crashes
     CHANNEL_LAYERS = {
         'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer'
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         }
     }
 
@@ -175,5 +175,15 @@ OTP_TOTP_ISSUER = 'SafeZone AI'
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 
 # ═════════ RATE LIMIT ═════════
-RATELIMIT_ENABLE = True 
+RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = 'default'
+
+# ═════════ SECURITY HEADERS (production only) ═════════
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
