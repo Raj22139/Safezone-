@@ -15,7 +15,7 @@ SECRET_KEY   = config('SECRET_KEY', default='django-insecure-change-this-in-prod
 DEBUG        = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,.onrender.com'
+    default='localhost,127.0.0.1,safezone-6.onrender.com'
 ).split(',')
 
 # ════════════════════════════════════════
