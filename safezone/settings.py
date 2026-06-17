@@ -12,8 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 # ════════════════════════════════════════
 SECRET_KEY   = config('SECRET_KEY', default='django-insecure-change-this-in-production-xyz123')
-DEBUG        = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS= config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+DEBUG        = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,.onrender.com'
+).split(',')
 
 # ════════════════════════════════════════
 # INSTALLED APPS
@@ -78,7 +81,7 @@ TEMPLATES = [
         },
     },
 ]
-print("DB_PASSWORD =", config('DB_PASSWORD', default='NOT_FOUND'))
+# print("DB_PASSWORD =", config('DB_PASSWORD', default='NOT_FOUND'))
 # ════════════════════════════════════════
 # DATABASE — PostgreSQL
 # ════════════════════════════════════════
